@@ -4,6 +4,15 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { handleAnalyze } from "./handlers/analyze.js";
 import { handleListJobs, handleGetJob } from "./handlers/jobs.js";
+import {
+  handleBuilderImport,
+  handleBuilderSuggest,
+  handleBuilderRender,
+  handleDraftsList,
+  handleDraftSave,
+  handleDraftGet,
+  handleDraftDelete,
+} from "./handlers/builder.js";
 import { sendJson, HttpError } from "./lib/http.js";
 
 export async function route(
@@ -33,6 +42,29 @@ export async function route(
   if (method === "GET" && jobMatch) {
     await handleGetJob(req, res, jobMatch[1]);
     return;
+  }
+
+  // ---- Résumé Studio (builder) — additive routes ----
+  if (method === "POST" && path === "/api/builder/import") {
+    await handleBuilderImport(req, res);
+    return;
+  }
+  if (method === "POST" && path === "/api/builder/suggest") {
+    await handleBuilderSuggest(req, res);
+    return;
+  }
+  if (method === "POST" && path === "/api/builder/render") {
+    await handleBuilderRender(req, res);
+    return;
+  }
+  if (path === "/api/builder/drafts") {
+    if (method === "GET") return void (await handleDraftsList(req, res));
+    if (method === "POST") return void (await handleDraftSave(req, res));
+  }
+  const draftMatch = path.match(/^\/api\/builder\/drafts\/([A-Za-z0-9-]+)$/);
+  if (draftMatch) {
+    if (method === "GET") return void (await handleDraftGet(req, res, draftMatch[1]));
+    if (method === "DELETE") return void (await handleDraftDelete(req, res, draftMatch[1]));
   }
 
   throw new HttpError(404, "Not found");

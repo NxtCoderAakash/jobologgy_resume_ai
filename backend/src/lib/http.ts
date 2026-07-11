@@ -7,7 +7,7 @@ const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "*";
 
 export function applyCors(res: ServerResponse): void {
   res.setHeader("Access-Control-Allow-Origin", FRONTEND_ORIGIN);
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
   res.setHeader(
     "Access-Control-Allow-Headers",
     "Content-Type, Authorization",
@@ -23,6 +23,21 @@ export function sendJson(
   const payload = JSON.stringify(body);
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(payload);
+}
+
+/** Send a PDF buffer as a downloadable attachment. */
+export function sendPdf(
+  res: ServerResponse,
+  status: number,
+  pdf: Buffer,
+  filename: string,
+): void {
+  res.writeHead(status, {
+    "Content-Type": "application/pdf",
+    "Content-Disposition": `attachment; filename="${filename}"`,
+    "Content-Length": pdf.length,
+  });
+  res.end(pdf);
 }
 
 /** A thrown HttpError becomes a clean JSON response with the given status. */

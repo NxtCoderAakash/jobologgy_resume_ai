@@ -35,6 +35,9 @@ export default function NavBar() {
               <Link href="/app" className="font-semibold text-ink-700 hover:text-brand-600">
                 Optimizer
               </Link>
+              <Link href="/builder" className="font-semibold text-ink-700 hover:text-brand-600">
+                Résumé Studio
+              </Link>
               <span className="hidden text-ink-500 sm:inline">{email}</span>
               <button onClick={signOut} className="btn-ghost px-4 py-2">
                 Sign out

@@ -21,3 +21,7 @@ npm-debug.log*
 # deploy / tooling
 .vercel/
 **/.vercel/
+
+# local secrets bundle (never commit)
+*.local.txt
+DEPLOY-KEYS*.txt

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { analyzeResume } from "@/lib/api";
+import { takeHandoff } from "@/lib/handoff";
 import type { AnalyzeResult } from "@/types/analysis";
 import NavBar from "@/components/NavBar";
 import FileDropzone from "@/components/FileDropzone";
@@ -34,6 +35,7 @@ export default function WorkspacePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
+  const [prefilled, setPrefilled] = useState(false);
 
   // Route guard.
   useEffect(() => {
@@ -42,6 +44,21 @@ export default function WorkspacePage() {
       else setReady(true);
     });
   }, [router]);
+
+  // Pre-fill when arriving from the Analyzer's "Optimize it" hand-off.
+  useEffect(() => {
+    const h = takeHandoff();
+    if (!h) return;
+    if (h.jobDescription) setJobDescription(h.jobDescription);
+    if (h.file) {
+      setFile(h.file);
+      setUsePaste(false);
+    } else if (h.resumeText) {
+      setResumeText(h.resumeText);
+      setUsePaste(true);
+    }
+    if (h.jobDescription || h.file || h.resumeText) setPrefilled(true);
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -101,6 +118,12 @@ export default function WorkspacePage() {
           Upload your CV and a job description — get an ATS-optimized résumé, a before/after
           score, and a report of every improvement.
         </p>
+
+        {prefilled && (
+          <p className="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700">
+            ✓ Pre-filled from your Analyzer run — just hit “Optimize my résumé”.
+          </p>
+        )}
 
         <form onSubmit={onSubmit} className="mt-8 grid gap-6 lg:grid-cols-2">
           {/* Résumé input */}

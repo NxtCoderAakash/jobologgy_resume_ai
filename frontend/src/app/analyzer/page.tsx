@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { scoreResume } from "@/lib/analyzerApi";
+import { setHandoff } from "@/lib/handoff";
 import type { AnalyzerResult } from "@/types/analyzer";
 import NavBar from "@/components/NavBar";
 import FileDropzone from "@/components/FileDropzone";
@@ -193,9 +194,21 @@ export default function AnalyzerPage() {
                 or fine-tune it yourself in <strong>Résumé Studio</strong>.
               </p>
               <div className="flex shrink-0 gap-3">
-                <Link href="/app" className="btn-primary px-4 py-2 text-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Carry this run's inputs over — the Optimizer arrives pre-filled.
+                    setHandoff({
+                      file: usePaste ? null : file,
+                      resumeText: usePaste ? resumeText : "",
+                      jobDescription,
+                    });
+                    router.push("/app");
+                  }}
+                  className="btn-primary px-4 py-2 text-sm"
+                >
                   Optimize it →
-                </Link>
+                </button>
                 <Link href="/builder" className="btn-ghost px-4 py-2 text-sm">
                   Edit in Studio
                 </Link>

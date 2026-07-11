@@ -13,6 +13,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import NavBar from "@/components/NavBar";
 import FileDropzone from "@/components/FileDropzone";
+import LoadingProgress from "@/components/LoadingProgress";
 import StepRail from "@/components/builder/StepRail";
 import CvPreview from "@/components/builder/CvPreview";
 import {
@@ -33,6 +34,21 @@ import {
 } from "@/lib/builderApi";
 import { validateCv } from "@/lib/builderValidation";
 import { emptyCv, STEPS, type CvData, type DraftMeta, type StepId } from "@/types/builder";
+
+const IMPORT_MESSAGES = [
+  "Reading your file…",
+  "Extracting the text…",
+  "Detecting your sections…",
+  "Structuring your experience and skills…",
+  "Filling in the editor…",
+];
+
+const PDF_MESSAGES = [
+  "Laying out your résumé…",
+  "Applying the ATS-safe template…",
+  "Rendering your PDF…",
+  "Almost there…",
+];
 
 type SaveState = "clean" | "dirty" | "saving" | "saved" | "error";
 
@@ -336,8 +352,28 @@ function Builder() {
                 disabled={importing}
                 className="btn-primary mt-4 w-full"
               >
-                {importing ? "Reading your résumé… ~15s" : "Import & edit →"}
+                {importing ? (
+                  <>
+                    <span
+                      aria-hidden
+                      className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                    />
+                    Importing…
+                  </>
+                ) : (
+                  "Import & edit →"
+                )}
               </button>
+
+              {importing && (
+                <div className="mt-4">
+                  <LoadingProgress
+                    title="Importing your résumé…"
+                    expectedSeconds={15}
+                    messages={IMPORT_MESSAGES}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-6">
@@ -548,8 +584,26 @@ function FinishStep({
         disabled={downloading || validation.errors.length > 0}
         className="btn-primary w-full"
       >
-        {downloading ? "Generating your PDF…" : "Download PDF ↓"}
+        {downloading ? (
+          <>
+            <span
+              aria-hidden
+              className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+            />
+            Generating your PDF…
+          </>
+        ) : (
+          "Download PDF ↓"
+        )}
       </button>
+
+      {downloading && (
+        <LoadingProgress
+          title="Generating your PDF…"
+          expectedSeconds={12}
+          messages={PDF_MESSAGES}
+        />
+      )}
       <p className="text-center text-xs text-ink-500">
         Single-column, real-text PDF — safe for every ATS. Your draft stays saved for later edits.
       </p>

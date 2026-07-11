@@ -8,6 +8,19 @@ import type { AnalyzeResult } from "@/types/analysis";
 import NavBar from "@/components/NavBar";
 import FileDropzone from "@/components/FileDropzone";
 import AnalysisReport from "@/components/AnalysisReport";
+import LoadingProgress from "@/components/LoadingProgress";
+
+const OPTIMIZING_MESSAGES = [
+  "Reading your résumé…",
+  "Extracting the job's key requirements…",
+  "Scoring your current résumé against the role…",
+  "Rewriting bullets with stronger action verbs…",
+  "Weaving missing keywords into your real experience…",
+  "Re-scoring the optimized version…",
+  "Laying out your new ATS-safe CV…",
+  "Rendering your two PDFs…",
+  "Uploading your documents securely…",
+];
 
 export default function WorkspacePage() {
   const router = useRouter();
@@ -132,8 +145,28 @@ export default function WorkspacePage() {
               </p>
             )}
             <button type="submit" disabled={busy} className="btn-primary">
-              {busy ? "Optimizing… this can take ~20s" : "Optimize my résumé →"}
+              {busy ? (
+                <>
+                  <span
+                    aria-hidden
+                    className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                  />
+                  Optimizing your résumé…
+                </>
+              ) : (
+                "Optimize my résumé →"
+              )}
             </button>
+
+            {busy && (
+              <div className="mt-6">
+                <LoadingProgress
+                  title="Building your optimized résumé…"
+                  expectedSeconds={25}
+                  messages={OPTIMIZING_MESSAGES}
+                />
+              </div>
+            )}
           </div>
         </form>
 

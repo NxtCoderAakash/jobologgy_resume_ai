@@ -1,4 +1,4 @@
-# ElegantCV-style AI Resume Optimizer
+# Jobologgy — AI Resume Optimizer
 
 Upload a résumé (PDF / DOCX / image / screenshot / pasted text) + a job description. A free AI model
 (Google Gemini) rewrites it to be **ATS-compliant and tailored to the JD**, scores it **before vs
@@ -9,7 +9,7 @@ Stack: **Next.js + React + TypeScript + Tailwind** (frontend) · **plain Node.js
 framework** (backend) · **Supabase** (Auth + Postgres + Storage) · **Google Gemini** (free tier).
 
 ```
-elegant-resume-ai/
+jobologgy/
 ├── backend/     plain Node.js service (native http) — the language-agnostic integration surface
 └── frontend/    Next.js demo app + a copy-paste integration module (JS and TS flavors)
 ```

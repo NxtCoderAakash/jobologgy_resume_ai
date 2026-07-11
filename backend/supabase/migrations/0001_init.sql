@@ -1,4 +1,4 @@
--- ElegantCV-style AI Resume Optimizer — initial schema, RLS, and storage buckets.
+-- Jobologgy — AI Resume Optimizer — initial schema, RLS, and storage buckets.
 -- Run this in the Supabase SQL Editor.
 
 -- ---------------------------------------------------------------------------

@@ -92,7 +92,7 @@ export default function HomePage() {
       </section>
 
       <footer className="border-t border-slate-200 py-8 text-center text-sm text-ink-500">
-        ElegantCV AI — a résumé optimization demo. Built with Next.js, Supabase & Gemini.
+        Jobologgy AI — a résumé optimization demo. Built with Next.js, Supabase & Gemini.
       </footer>
     </main>
   );

@@ -3,7 +3,7 @@
 # You'll be prompted to enter the 4 secret env vars (they are NOT stored in the repo).
 services:
   - type: web
-    name: elegant-resume-ai-backend
+    name: jobologgy-backend
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
@@ -17,6 +17,6 @@ services:
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       # Set this to your Vercel frontend URL once the frontend is deployed,
-      # e.g. https://elegant-resume-ai.vercel.app
+      # e.g. https://jobologgy.vercel.app
       - key: FRONTEND_ORIGIN
         sync: false

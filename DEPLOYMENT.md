@@ -21,12 +21,12 @@ the backend's `FRONTEND_ORIGIN` to the frontend URL.
 ---
 
 ## Step 1 — Push the repo to GitHub
-From `elegant-resume-ai/`:
+From `jobologgy/`:
 
 ```bash
 git init
 git add .
-git commit -m "Elegant Resume AI — deployable"
+git commit -m "Jobologgy — deployable"
 git branch -M main
 git remote add origin https://github.com/<you>/<repo>.git
 git push -u origin main
@@ -51,7 +51,7 @@ Create the empty repo first at https://github.com/new (no README/gitignore — t
    | `FRONTEND_ORIGIN` | leave as `*` for now — update in Step 4 |
 
 4. Click **Apply**. First build takes ~5–8 min (it installs Chromium).
-5. When live, note the URL, e.g. `https://elegant-resume-ai-backend.onrender.com`.
+5. When live, note the URL, e.g. `https://jobologgy-backend.onrender.com`.
    Open `<that-url>/health` — you should see `{"ok":true,...}`.
 
 > Not using the Blueprint? Create a **Web Service** manually: Root Directory `backend`,
@@ -71,13 +71,13 @@ Create the empty repo first at https://github.com/new (no README/gitignore — t
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | your Supabase **anon** key |
    | `NEXT_PUBLIC_BACKEND_URL` | the Render backend URL from Step 2 |
 
-5. **Deploy.** You'll get a URL like `https://elegant-resume-ai.vercel.app` — **this is the link for the client.**
+5. **Deploy.** You'll get a URL like `https://jobologgy.vercel.app` — **this is the link for the client.**
 
 ---
 
 ## Step 4 — Connect the two (CORS + auth redirects)
 1. **Render → backend service → Environment:** set `FRONTEND_ORIGIN` to your exact Vercel URL
-   (e.g. `https://elegant-resume-ai.vercel.app`, no trailing slash). Save → it redeploys.
+   (e.g. `https://jobologgy.vercel.app`, no trailing slash). Save → it redeploys.
 2. **Supabase → Authentication → URL Configuration:**
    - **Site URL:** your Vercel URL
    - **Redirect URLs:** add your Vercel URL

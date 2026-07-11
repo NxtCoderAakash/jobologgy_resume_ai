@@ -31,7 +31,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`▶ elegant-resume-ai backend listening on http://localhost:${PORT}`);
+  console.log(`▶ jobologgy backend listening on http://localhost:${PORT}`);
   if (!process.env.GEMINI_API_KEY) console.warn("  ⚠ GEMINI_API_KEY not set");
   if (!process.env.SUPABASE_URL) console.warn("  ⚠ SUPABASE_URL not set (persistence disabled)");
 });

@@ -14,6 +14,18 @@ import type { AnalyzerResult } from "@/types/analyzer";
 import NavBar from "@/components/NavBar";
 import FileDropzone from "@/components/FileDropzone";
 import AnalyzerReport from "@/components/AnalyzerReport";
+import LoadingProgress from "@/components/LoadingProgress";
+
+const SCORING_MESSAGES = [
+  "Reading your résumé…",
+  "Pulling the key skills out of the job description…",
+  "Matching your experience against the role…",
+  "Checking keyword coverage for ATS systems…",
+  "Scoring formatting and parseability…",
+  "Weighing quantified achievements…",
+  "Writing your strengths and gaps…",
+  "Putting together specific recommendations…",
+];
 
 export default function AnalyzerPage() {
   const router = useRouter();
@@ -28,6 +40,7 @@ export default function AnalyzerPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzerResult | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+  const loadingRef = useRef<HTMLDivElement>(null);
 
   // Route guard.
   useEffect(() => {
@@ -37,10 +50,13 @@ export default function AnalyzerPage() {
     });
   }, [router]);
 
-  // Scroll to the results when they land.
+  // Scroll to the results when they land, and to the progress panel while waiting.
   useEffect(() => {
     if (result) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [result]);
+  useEffect(() => {
+    if (busy) loadingRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [busy]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -140,8 +156,28 @@ export default function AnalyzerPage() {
               <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
             )}
             <button type="submit" disabled={busy} className="btn-primary">
-              {busy ? "Scoring… ~10s" : "Score my résumé →"}
+              {busy ? (
+                <>
+                  <span
+                    aria-hidden
+                    className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                  />
+                  Scoring your résumé…
+                </>
+              ) : (
+                "Score my résumé →"
+              )}
             </button>
+
+            {busy && (
+              <div ref={loadingRef} className="mt-6 scroll-mt-24">
+                <LoadingProgress
+                  title="Scoring your résumé against the job…"
+                  expectedSeconds={15}
+                  messages={SCORING_MESSAGES}
+                />
+              </div>
+            )}
           </div>
         </form>
 

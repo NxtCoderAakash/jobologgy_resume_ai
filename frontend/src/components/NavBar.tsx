@@ -32,6 +32,9 @@ export default function NavBar() {
         <nav className="flex items-center gap-3 text-sm">
           {email ? (
             <>
+              <Link href="/analyzer" className="font-semibold text-ink-700 hover:text-brand-600">
+                Analyzer
+              </Link>
               <Link href="/app" className="font-semibold text-ink-700 hover:text-brand-600">
                 Optimizer
               </Link>

@@ -1,0 +1,22 @@
+# Render Blueprint for the backend (Docker web service).
+# In Render: New > Blueprint, point it at this repo. It reads this file.
+# You'll be prompted to enter the 4 secret env vars (they are NOT stored in the repo).
+services:
+  - type: web
+    name: elegant-resume-ai-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # Set this to your Vercel frontend URL once the frontend is deployed,
+      # e.g. https://elegant-resume-ai.vercel.app
+      - key: FRONTEND_ORIGIN
+        sync: false

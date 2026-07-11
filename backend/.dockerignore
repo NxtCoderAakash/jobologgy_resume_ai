@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+.env.*
+*.log
+boot.log
+boot.err.log
+runtime.log
+.git

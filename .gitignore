@@ -1,0 +1,23 @@
+# deps
+node_modules/
+**/node_modules/
+
+# env
+.env
+.env.local
+**/.env
+**/.env.local
+
+# build output
+frontend/.next/
+frontend/out/
+backend/dist/
+
+# misc
+.DS_Store
+*.log
+npm-debug.log*
+
+# deploy / tooling
+.vercel/
+**/.vercel/

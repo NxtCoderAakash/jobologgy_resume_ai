@@ -35,6 +35,8 @@ export default function WorkspacePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
+  // Holds the API response during the loader's completion animation.
+  const [pending, setPending] = useState<AnalyzeResult | null>(null);
   const [prefilled, setPrefilled] = useState(false);
 
   // Route guard.
@@ -92,10 +94,10 @@ export default function WorkspacePage() {
         resumeText: usePaste ? resumeText : undefined,
         token,
       });
-      setResult(res);
+      // Don't reveal yet — let the loader complete to 100% first.
+      setPending(res);
     } catch (err) {
       setError((err as Error).message);
-    } finally {
       setBusy(false);
     }
   }
@@ -187,6 +189,13 @@ export default function WorkspacePage() {
                   title="Building your optimized résumé…"
                   expectedSeconds={25}
                   messages={OPTIMIZING_MESSAGES}
+                  done={!!pending}
+                  doneMessage="Your optimized résumé is ready…"
+                  onDone={() => {
+                    setResult(pending);
+                    setPending(null);
+                    setBusy(false);
+                  }}
                 />
               </div>
             )}

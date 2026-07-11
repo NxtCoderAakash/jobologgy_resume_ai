@@ -40,6 +40,8 @@ export default function AnalyzerPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzerResult | null>(null);
+  // Holds the API response during the loader's completion animation.
+  const [pending, setPending] = useState<AnalyzerResult | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
 
@@ -91,10 +93,10 @@ export default function AnalyzerPage() {
         resumeText: usePaste ? resumeText : undefined,
         token,
       });
-      setResult(res);
+      // Don't reveal yet — let the loader complete to 100% first.
+      setPending(res);
     } catch (err) {
       setError((err as Error).message);
-    } finally {
       setBusy(false);
     }
   }
@@ -176,6 +178,13 @@ export default function AnalyzerPage() {
                   title="Scoring your résumé against the job…"
                   expectedSeconds={15}
                   messages={SCORING_MESSAGES}
+                  done={!!pending}
+                  doneMessage="Score ready — here are your results…"
+                  onDone={() => {
+                    setResult(pending);
+                    setPending(null);
+                    setBusy(false);
+                  }}
                 />
               </div>
             )}

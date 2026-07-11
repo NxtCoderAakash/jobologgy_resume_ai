@@ -79,6 +79,8 @@ function Builder() {
   const [usePaste, setUsePaste] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [importing, setImporting] = useState(false);
+  // Holds the imported CV during the loader's completion animation.
+  const [pendingImport, setPendingImport] = useState<CvData | null>(null);
   const [startError, setStartError] = useState("");
   const [drafts, setDrafts] = useState<DraftMeta[]>([]);
   const [draftsLoading, setDraftsLoading] = useState(true);
@@ -91,6 +93,7 @@ function Builder() {
   const [saveState, setSaveState] = useState<SaveState>("clean");
   const [showPreview, setShowPreview] = useState(false); // mobile toggle
   const [downloading, setDownloading] = useState(false);
+  const [pdfDone, setPdfDone] = useState(false);
   const [downloadError, setDownloadError] = useState("");
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -225,16 +228,25 @@ function Builder() {
         resumeText: usePaste ? pasteText : undefined,
         token,
       });
-      setCv(imported);
-      setTitle(imported.fullName ? `${imported.fullName} — résumé` : "Imported résumé");
-      setPhase("editing");
-      setStep("contact");
-      scheduleSave(imported, imported.fullName ? `${imported.fullName} — résumé` : "Imported résumé");
+      // Don't switch to the editor yet — let the loader complete to 100% first.
+      setPendingImport(imported);
     } catch (err) {
       setStartError((err as Error).message);
-    } finally {
       setImporting(false);
     }
+  }
+
+  function finishImport() {
+    if (!pendingImport) return;
+    const imported = pendingImport;
+    const newTitle = imported.fullName ? `${imported.fullName} — résumé` : "Imported résumé";
+    setCv(imported);
+    setTitle(newTitle);
+    setPhase("editing");
+    setStep("contact");
+    scheduleSave(imported, newTitle);
+    setPendingImport(null);
+    setImporting(false);
   }
 
   function startBlank() {
@@ -293,11 +305,12 @@ function Builder() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      // Let the loader complete to 100% before returning to idle.
+      setPdfDone(true);
     } catch (err) {
       setDownloadError(
         `${(err as Error).message} — if the server was idle, the first try can take up to a minute; try again.`,
       );
-    } finally {
       setDownloading(false);
     }
   }
@@ -371,6 +384,9 @@ function Builder() {
                     title="Importing your résumé…"
                     expectedSeconds={15}
                     messages={IMPORT_MESSAGES}
+                    done={!!pendingImport}
+                    doneMessage="Imported — opening the editor…"
+                    onDone={finishImport}
                   />
                 </div>
               )}
@@ -480,6 +496,11 @@ function Builder() {
                 <FinishStep
                   validation={validation}
                   downloading={downloading}
+                  pdfDone={pdfDone}
+                  onPdfDone={() => {
+                    setPdfDone(false);
+                    setDownloading(false);
+                  }}
                   downloadError={downloadError}
                   onDownload={download}
                 />
@@ -536,11 +557,15 @@ function SaveBadge({ state }: { state: SaveState }) {
 function FinishStep({
   validation,
   downloading,
+  pdfDone,
+  onPdfDone,
   downloadError,
   onDownload,
 }: {
   validation: ReturnType<typeof validateCv>;
   downloading: boolean;
+  pdfDone: boolean;
+  onPdfDone: () => void;
   downloadError: string;
   onDownload: () => void;
 }) {
@@ -602,6 +627,9 @@ function FinishStep({
           title="Generating your PDF…"
           expectedSeconds={12}
           messages={PDF_MESSAGES}
+          done={pdfDone}
+          doneMessage="PDF downloaded — check your downloads folder."
+          onDone={onPdfDone}
         />
       )}
       <p className="text-center text-xs text-ink-500">

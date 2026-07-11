@@ -1,8 +1,27 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+
+function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  const pathname = usePathname();
+  const active = pathname === href || pathname.startsWith(`${href}/`);
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`rounded-lg px-3 py-1.5 font-semibold transition ${
+        active
+          ? "bg-brand-50 text-brand-700"
+          : "text-ink-700 hover:bg-slate-100 hover:text-brand-600"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
 
 export default function NavBar() {
   const [email, setEmail] = useState<string | null>(null);
@@ -32,12 +51,9 @@ export default function NavBar() {
         <nav className="flex items-center gap-3 text-sm">
           {email ? (
             <>
-              <Link href="/app" className="font-semibold text-ink-700 hover:text-brand-600">
-                Optimizer
-              </Link>
-              <Link href="/builder" className="font-semibold text-ink-700 hover:text-brand-600">
-                Résumé Studio
-              </Link>
+              <NavLink href="/analyzer">Analyzer</NavLink>
+              <NavLink href="/app">Optimizer</NavLink>
+              <NavLink href="/builder">Résumé Studio</NavLink>
               <span className="hidden text-ink-500 sm:inline">{email}</span>
               <button onClick={signOut} className="btn-ghost px-4 py-2">
                 Sign out

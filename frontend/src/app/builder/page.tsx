@@ -13,6 +13,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import NavBar from "@/components/NavBar";
 import FileDropzone from "@/components/FileDropzone";
+import LoadingProgress from "@/components/LoadingProgress";
 import StepRail from "@/components/builder/StepRail";
 import CvPreview from "@/components/builder/CvPreview";
 import {
@@ -33,6 +34,21 @@ import {
 } from "@/lib/builderApi";
 import { validateCv } from "@/lib/builderValidation";
 import { emptyCv, STEPS, type CvData, type DraftMeta, type StepId } from "@/types/builder";
+
+const IMPORT_MESSAGES = [
+  "Reading your file…",
+  "Extracting the text…",
+  "Detecting your sections…",
+  "Structuring your experience and skills…",
+  "Filling in the editor…",
+];
+
+const PDF_MESSAGES = [
+  "Laying out your résumé…",
+  "Applying the ATS-safe template…",
+  "Rendering your PDF…",
+  "Almost there…",
+];
 
 type SaveState = "clean" | "dirty" | "saving" | "saved" | "error";
 
@@ -63,6 +79,8 @@ function Builder() {
   const [usePaste, setUsePaste] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [importing, setImporting] = useState(false);
+  // Holds the imported CV during the loader's completion animation.
+  const [pendingImport, setPendingImport] = useState<CvData | null>(null);
   const [startError, setStartError] = useState("");
   const [drafts, setDrafts] = useState<DraftMeta[]>([]);
   const [draftsLoading, setDraftsLoading] = useState(true);
@@ -75,6 +93,7 @@ function Builder() {
   const [saveState, setSaveState] = useState<SaveState>("clean");
   const [showPreview, setShowPreview] = useState(false); // mobile toggle
   const [downloading, setDownloading] = useState(false);
+  const [pdfDone, setPdfDone] = useState(false);
   const [downloadError, setDownloadError] = useState("");
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -209,16 +228,25 @@ function Builder() {
         resumeText: usePaste ? pasteText : undefined,
         token,
       });
-      setCv(imported);
-      setTitle(imported.fullName ? `${imported.fullName} — résumé` : "Imported résumé");
-      setPhase("editing");
-      setStep("contact");
-      scheduleSave(imported, imported.fullName ? `${imported.fullName} — résumé` : "Imported résumé");
+      // Don't switch to the editor yet — let the loader complete to 100% first.
+      setPendingImport(imported);
     } catch (err) {
       setStartError((err as Error).message);
-    } finally {
       setImporting(false);
     }
+  }
+
+  function finishImport() {
+    if (!pendingImport) return;
+    const imported = pendingImport;
+    const newTitle = imported.fullName ? `${imported.fullName} — résumé` : "Imported résumé";
+    setCv(imported);
+    setTitle(newTitle);
+    setPhase("editing");
+    setStep("contact");
+    scheduleSave(imported, newTitle);
+    setPendingImport(null);
+    setImporting(false);
   }
 
   function startBlank() {
@@ -277,11 +305,12 @@ function Builder() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      // Let the loader complete to 100% before returning to idle.
+      setPdfDone(true);
     } catch (err) {
       setDownloadError(
         `${(err as Error).message} — if the server was idle, the first try can take up to a minute; try again.`,
       );
-    } finally {
       setDownloading(false);
     }
   }
@@ -336,8 +365,31 @@ function Builder() {
                 disabled={importing}
                 className="btn-primary mt-4 w-full"
               >
-                {importing ? "Reading your résumé… ~15s" : "Import & edit →"}
+                {importing ? (
+                  <>
+                    <span
+                      aria-hidden
+                      className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                    />
+                    Importing…
+                  </>
+                ) : (
+                  "Import & edit →"
+                )}
               </button>
+
+              {importing && (
+                <div className="mt-4">
+                  <LoadingProgress
+                    title="Importing your résumé…"
+                    expectedSeconds={15}
+                    messages={IMPORT_MESSAGES}
+                    done={!!pendingImport}
+                    doneMessage="Imported — opening the editor…"
+                    onDone={finishImport}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-6">
@@ -444,6 +496,11 @@ function Builder() {
                 <FinishStep
                   validation={validation}
                   downloading={downloading}
+                  pdfDone={pdfDone}
+                  onPdfDone={() => {
+                    setPdfDone(false);
+                    setDownloading(false);
+                  }}
                   downloadError={downloadError}
                   onDownload={download}
                 />
@@ -500,11 +557,15 @@ function SaveBadge({ state }: { state: SaveState }) {
 function FinishStep({
   validation,
   downloading,
+  pdfDone,
+  onPdfDone,
   downloadError,
   onDownload,
 }: {
   validation: ReturnType<typeof validateCv>;
   downloading: boolean;
+  pdfDone: boolean;
+  onPdfDone: () => void;
   downloadError: string;
   onDownload: () => void;
 }) {
@@ -548,8 +609,29 @@ function FinishStep({
         disabled={downloading || validation.errors.length > 0}
         className="btn-primary w-full"
       >
-        {downloading ? "Generating your PDF…" : "Download PDF ↓"}
+        {downloading ? (
+          <>
+            <span
+              aria-hidden
+              className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+            />
+            Generating your PDF…
+          </>
+        ) : (
+          "Download PDF ↓"
+        )}
       </button>
+
+      {downloading && (
+        <LoadingProgress
+          title="Generating your PDF…"
+          expectedSeconds={12}
+          messages={PDF_MESSAGES}
+          done={pdfDone}
+          doneMessage="PDF downloaded — check your downloads folder."
+          onDone={onPdfDone}
+        />
+      )}
       <p className="text-center text-xs text-ink-500">
         Single-column, real-text PDF — safe for every ATS. Your draft stays saved for later edits.
       </p>

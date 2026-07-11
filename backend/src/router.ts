@@ -13,6 +13,7 @@ import {
   handleDraftGet,
   handleDraftDelete,
 } from "./handlers/builder.js";
+import { handleAnalyzerScore } from "./handlers/analyzer.js";
 import { sendJson, HttpError } from "./lib/http.js";
 
 export async function route(
@@ -41,6 +42,12 @@ export async function route(
   const jobMatch = path.match(/^\/api\/jobs\/([A-Za-z0-9-]+)$/);
   if (method === "GET" && jobMatch) {
     await handleGetJob(req, res, jobMatch[1]);
+    return;
+  }
+
+  // ---- Résumé Analyzer (score-only) — additive route ----
+  if (method === "POST" && path === "/api/analyzer/score") {
+    await handleAnalyzerScore(req, res);
     return;
   }
 

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { analyzeResume } from "@/lib/api";
 import { takeHandoff } from "@/lib/handoff";
 import type { AnalyzeResult } from "@/types/analysis";
+import type { AnalyzerResult } from "@/types/analyzer";
 import NavBar from "@/components/NavBar";
 import FileDropzone from "@/components/FileDropzone";
 import AnalysisReport from "@/components/AnalysisReport";
@@ -38,6 +39,21 @@ export default function WorkspacePage() {
   // Holds the API response during the loader's completion animation.
   const [pending, setPending] = useState<AnalyzeResult | null>(null);
   const [prefilled, setPrefilled] = useState(false);
+  // Snapshot of the Analyzer hand-off: its score plus the exact inputs it was
+  // computed for. We only reuse the score as "before" if the user hasn't since
+  // changed the résumé or JD — otherwise it would be stale and wrong.
+  const handoffRef = useRef<{
+    resumeText: string;
+    jobDescription: string;
+    file: File | null;
+    priorScore: AnalyzerResult | null;
+  } | null>(null);
+
+  // "Add skills from the JD" dialog state.
+  const [showSkillDialog, setShowSkillDialog] = useState(false);
+  const [offeredSkills, setOfferedSkills] = useState<string[]>([]);
+  const [checkedSkills, setCheckedSkills] = useState<Record<string, boolean>>({});
+  const [extraSkills, setExtraSkills] = useState("");
 
   // Route guard.
   useEffect(() => {
@@ -60,7 +76,29 @@ export default function WorkspacePage() {
       setUsePaste(true);
     }
     if (h.jobDescription || h.file || h.resumeText) setPrefilled(true);
+    handoffRef.current = {
+      resumeText: h.resumeText ?? "",
+      jobDescription: h.jobDescription ?? "",
+      file: h.file ?? null,
+      priorScore: h.priorScore ?? null,
+    };
   }, []);
+
+  /** Reuse the Analyzer's score only if the résumé + JD are unchanged since it ran. */
+  function reusablePriorScore(): AnalyzerResult | null {
+    const src = handoffRef.current;
+    if (!src?.priorScore) return null;
+    if (jobDescription !== src.jobDescription) return null;
+    const sameResume = usePaste
+      ? resumeText === src.resumeText
+      : file != null && file === src.file;
+    return sameResume ? src.priorScore : null;
+  }
+
+  /** JD skills the Analyzer found missing from this exact résumé (offered in the dialog). */
+  function missingSkillsToOffer(): string[] {
+    return reusablePriorScore()?.keywordAnalysis.missing ?? [];
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -80,6 +118,22 @@ export default function WorkspacePage() {
       return;
     }
 
+    // If the JD wants skills this résumé doesn't show, ask the user which they
+    // genuinely have before we build the CV — never invent them silently.
+    const missing = missingSkillsToOffer();
+    if (missing.length) {
+      setOfferedSkills(missing);
+      setCheckedSkills({});
+      setExtraSkills("");
+      setShowSkillDialog(true);
+      return;
+    }
+    await runOptimize([]);
+  }
+
+  /** Fire the optimize request, optionally adding user-confirmed skills. */
+  async function runOptimize(confirmedSkills: string[]) {
+    setShowSkillDialog(false);
     setBusy(true);
     try {
       const { data } = await supabase.auth.getSession();
@@ -93,6 +147,8 @@ export default function WorkspacePage() {
         file: usePaste ? null : file,
         resumeText: usePaste ? resumeText : undefined,
         token,
+        priorBeforeScore: reusablePriorScore(),
+        confirmedSkills,
       });
       // Don't reveal yet — let the loader complete to 100% first.
       setPending(res);
@@ -100,6 +156,16 @@ export default function WorkspacePage() {
       setError((err as Error).message);
       setBusy(false);
     }
+  }
+
+  /** Collect the checked JD skills + any free-text extras, then optimize. */
+  function confirmSkillsAndOptimize() {
+    const checked = offeredSkills.filter((s) => checkedSkills[s]);
+    const extras = extraSkills
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    runOptimize([...checked, ...extras]);
   }
 
   if (!ready) {
@@ -209,6 +275,73 @@ export default function WorkspacePage() {
           </div>
         )}
       </div>
+
+      {showSkillDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="skill-dialog-title"
+        >
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-card">
+            <h3 id="skill-dialog-title" className="text-xl font-extrabold text-ink-900">
+              Add skills the job asks for?
+            </h3>
+            <p className="mt-2 text-sm text-ink-500">
+              The job description mentions these skills your résumé doesn’t show yet. Tick any you
+              genuinely have — we’ll weave them into your optimized CV. We won’t add skills you
+              don’t confirm.
+            </p>
+
+            <div className="mt-4 space-y-2">
+              {offeredSkills.map((s) => (
+                <label
+                  key={s}
+                  className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!checkedSkills[s]}
+                    onChange={(e) =>
+                      setCheckedSkills((prev) => ({ ...prev, [s]: e.target.checked }))
+                    }
+                    className="h-4 w-4 accent-brand-600"
+                  />
+                  <span className="text-sm font-medium text-ink-700">{s}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="mt-4">
+              <label
+                htmlFor="extra-skills"
+                className="text-sm font-semibold text-ink-700"
+              >
+                Other skills from the job description you have (optional)
+              </label>
+              <input
+                id="extra-skills"
+                className="input mt-1"
+                placeholder="e.g. Docker, GraphQL"
+                value={extraSkills}
+                onChange={(e) => setExtraSkills(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-ink-500">
+                Comma-separated. Only add skills you can honestly back up in an interview.
+              </p>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button type="button" className="btn-ghost" onClick={() => runOptimize([])}>
+                Skip — don’t add any
+              </button>
+              <button type="button" className="btn-primary" onClick={confirmSkillsAndOptimize}>
+                Add selected &amp; optimize →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

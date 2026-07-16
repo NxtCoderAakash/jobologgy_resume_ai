@@ -158,10 +158,23 @@ Do all of the following:
 4. Provide an "improvements" list explaining, item by item, what changed and WHY it improved the
    score — especially why keyword matching improved.
 
-HARD RULES:
+HARD RULES — CONTENT INTEGRITY (these are non-negotiable; violating them harms the candidate):
 - NEVER fabricate employers, job titles, dates, degrees, or credentials the candidate does not have.
+- NEVER add a skill, tool, technology, platform, framework, or certification that does not already
+  appear in the ORIGINAL résumé — not even if the JD clearly asks for it. If the JD requires
+  something the candidate lacks, LEAVE IT OUT; it will be surfaced to them as a gap to fill in
+  themselves. Do not write summaries claiming expertise in tools the résumé never mentions.
+- NEVER invent numbers, percentages, or metrics. You may keep and rephrase a quantified result only
+  if that exact number already appears in the original. Do NOT turn "fixed bugs" into "fixed 15+ bugs,
+  reducing downtime by 10%" — inventing statistics the candidate can't defend in an interview is
+  strictly forbidden.
+- PRESERVE the candidate's real substantive content. Do not silently drop education details (GPA,
+  coursework, honors), volunteer roles, projects, or certifications that were in the original. You may
+  reorder or tighten wording, but keep the information.
+
+HARD RULES — FORMAT:
 - Only introduce a JD keyword where it is genuinely supported by the candidate's real experience.
-- Use strong action verbs and quantify impact where the original implies it.
+- Use strong action verbs; you may re-frame real achievements, but never manufacture impact.
 - Produce a single-column, ATS-safe structure (no tables/columns/graphics in the content).
 - Be realistic with scores; do not output 100 unless truly warranted.
 - Respond with ONLY the JSON object matching the provided schema.`;

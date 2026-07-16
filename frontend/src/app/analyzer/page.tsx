@@ -206,11 +206,13 @@ export default function AnalyzerPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    // Carry this run's inputs over — the Optimizer arrives pre-filled.
+                    // Carry this run's inputs AND its score over — the Optimizer
+                    // arrives pre-filled and can reuse this score as the "before".
                     setHandoff({
                       file: usePaste ? null : file,
                       resumeText: usePaste ? resumeText : "",
                       jobDescription,
+                      priorScore: result,
                     });
                     router.push("/app");
                   }}

@@ -1,4 +1,5 @@
 import type { AnalyzeResult } from "@/types/analysis";
+import type { AnalyzerResult } from "@/types/analyzer";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8787";
@@ -8,6 +9,10 @@ export interface AnalyzeArgs {
   file?: File | null;
   resumeText?: string;
   token: string; // Supabase access token (JWT)
+  /** Analyzer's score for this exact input, to reuse as "before" (saves a call). */
+  priorBeforeScore?: AnalyzerResult | null;
+  /** Skills the user confirmed they have (from the "add JD skills" dialog). */
+  confirmedSkills?: string[];
 }
 
 /**
@@ -19,6 +24,10 @@ export async function analyzeResume(args: AnalyzeArgs): Promise<AnalyzeResult> {
   form.append("jobDescription", args.jobDescription);
   if (args.file) form.append("file", args.file);
   if (args.resumeText) form.append("resumeText", args.resumeText);
+  if (args.priorBeforeScore)
+    form.append("priorBeforeScore", JSON.stringify(args.priorBeforeScore));
+  if (args.confirmedSkills && args.confirmedSkills.length)
+    form.append("confirmedSkills", JSON.stringify(args.confirmedSkills));
 
   const res = await fetch(`${BACKEND_URL}/api/analyze`, {
     method: "POST",

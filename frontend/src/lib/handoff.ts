@@ -5,10 +5,15 @@
  * just re-picks the file — everything else stays filled.
  */
 
+import type { AnalyzerResult } from "@/types/analyzer";
+
 export interface Handoff {
   resumeText?: string;
   jobDescription?: string;
   file?: File | null;
+  /** The Analyzer's score for these exact inputs, so the Optimizer can reuse it
+   *  as the "before" score instead of paying for a second scoring call. */
+  priorScore?: AnalyzerResult | null;
 }
 
 const KEY = "jobologgy.handoff";
@@ -23,6 +28,7 @@ export function setHandoff(h: Handoff): void {
         resumeText: h.resumeText ?? "",
         jobDescription: h.jobDescription ?? "",
         fileName: h.file?.name ?? "",
+        priorScore: h.priorScore ?? null,
       }),
     );
   } catch {
@@ -32,7 +38,9 @@ export function setHandoff(h: Handoff): void {
 
 /** Read AND clear the hand-off (one-shot). Returns null if there is none. */
 export function takeHandoff(): Handoff | null {
-  let stored: { resumeText?: string; jobDescription?: string } | null = null;
+  let stored:
+    | { resumeText?: string; jobDescription?: string; priorScore?: AnalyzerResult | null }
+    | null = null;
   try {
     const raw = sessionStorage.getItem(KEY);
     if (raw) stored = JSON.parse(raw);
@@ -48,5 +56,6 @@ export function takeHandoff(): Handoff | null {
     resumeText: stored?.resumeText ?? "",
     jobDescription: stored?.jobDescription ?? "",
     file,
+    priorScore: stored?.priorScore ?? null,
   };
 }

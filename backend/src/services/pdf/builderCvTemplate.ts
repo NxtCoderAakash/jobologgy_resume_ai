@@ -15,6 +15,22 @@ function esc(s: string): string {
 
 const has = (s?: string) => Boolean(s && s.trim().length);
 
+/**
+ * Tidy up date strings so they read cleanly regardless of source:
+ *  - insert a missing space between a month abbreviation and a 4-digit year
+ *    ("Aug2021" -> "Aug 2021")
+ *  - normalize hyphen ranges to an en dash with spaces ("2021-2025" -> "2021 – 2025")
+ */
+function formatDates(s: string): string {
+  return String(s ?? "")
+    .replace(
+      /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)(\d{4})\b/gi,
+      "$1 $2",
+    )
+    .replace(/\s*[-–—]\s*/g, " – ")
+    .trim();
+}
+
 export function renderBuilderCvHtml(cv: BuilderCv): string {
   const contactBits = [
     cv.contact.email,
@@ -33,7 +49,7 @@ export function renderBuilderCvHtml(cv: BuilderCv): string {
       <div class="entry">
         <div class="entry-head">
           <span class="entry-title">${esc(e.role)}</span>
-          <span class="entry-dates">${esc(e.dates)}</span>
+          <span class="entry-dates">${esc(formatDates(e.dates))}</span>
         </div>
         ${has(e.company) ? `<div class="entry-sub">${esc(e.company)}</div>` : ""}
         ${
@@ -52,7 +68,7 @@ export function renderBuilderCvHtml(cv: BuilderCv): string {
       <div class="entry">
         <div class="entry-head">
           <span class="entry-title">${esc(e.degree)}</span>
-          <span class="entry-dates">${esc(e.dates)}</span>
+          <span class="entry-dates">${esc(formatDates(e.dates))}</span>
         </div>
         ${has(e.institution) ? `<div class="entry-sub">${esc(e.institution)}</div>` : ""}
       </div>`,

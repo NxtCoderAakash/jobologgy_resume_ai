@@ -9,6 +9,17 @@ import type { CvData } from "@/types/builder";
 
 const has = (s?: string) => Boolean(s && s.trim().length);
 
+/** Mirror of builderCvTemplate.ts formatDates so preview matches the PDF. */
+function formatDates(s: string): string {
+  return String(s ?? "")
+    .replace(
+      /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)(\d{4})\b/gi,
+      "$1 $2",
+    )
+    .replace(/\s*[-–—]\s*/g, " – ")
+    .trim();
+}
+
 export default function CvPreview({ cv }: { cv: CvData }) {
   const contactBits = [
     cv.contact.email,
@@ -90,7 +101,7 @@ export default function CvPreview({ cv }: { cv: CvData }) {
           {experience.length > 0 && (
             <Section title="Experience">
               {experience.map((e, i) => (
-                <Entry key={i} title={e.role} dates={e.dates} sub={e.company}>
+                <Entry key={i} title={e.role} dates={formatDates(e.dates)} sub={e.company}>
                   {e.bullets.some(has) && (
                     <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
                       {e.bullets.filter(has).map((b, j) => (
@@ -108,7 +119,7 @@ export default function CvPreview({ cv }: { cv: CvData }) {
           {education.length > 0 && (
             <Section title="Education">
               {education.map((e, i) => (
-                <Entry key={i} title={e.degree} dates={e.dates} sub={e.institution} />
+                <Entry key={i} title={e.degree} dates={formatDates(e.dates)} sub={e.institution} />
               ))}
             </Section>
           )}

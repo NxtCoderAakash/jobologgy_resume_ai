@@ -5,6 +5,7 @@
  * (same fonts/colors/hierarchy) so what the user sees is what the PDF renders.
  * Empty sections are hidden, exactly like the PDF.
  */
+import { useEffect, useRef, useState } from "react";
 import type { CvData } from "@/types/builder";
 
 const has = (s?: string) => Boolean(s && s.trim().length);
@@ -43,12 +44,54 @@ export default function CvPreview({ cv }: { cv: CvData }) {
     !experience.length &&
     !education.length;
 
+  // Approximate A4 page-break markers: split the sheet every (width * 297/210).
+  // Recomputed on resize AND on content change (height change fires the observer).
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [breaks, setBreaks] = useState<number[]>([]);
+  useEffect(() => {
+    const el = sheetRef.current;
+    if (!el) return;
+    const compute = () => {
+      const w = el.clientWidth;
+      if (!w) return;
+      const pageH = (w * 297) / 210; // A4 height for this width
+      const total = el.scrollHeight;
+      const ys: number[] = [];
+      for (let y = pageH; y < total - 12; y += pageH) ys.push(y);
+      setBreaks((prev) =>
+        prev.length === ys.length && prev.every((v, i) => Math.abs(v - ys[i]) < 1) ? prev : ys,
+      );
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <div
+      ref={sheetRef}
       aria-label="Résumé preview"
-      className="rounded-xl border border-slate-200 bg-white px-8 py-9 shadow-card"
+      className="relative rounded-xl border border-slate-200 bg-white px-8 py-9 shadow-card"
       style={{ fontFamily: `"Helvetica Neue", Arial, sans-serif`, fontSize: 13, lineHeight: 1.45, color: "#1f2937" }}
     >
+      {/* Page-break markers (only when the résumé spills onto a 2nd+ page) */}
+      {!isEmpty && breaks.length > 0 && (
+        <>
+          <span className="pointer-events-none absolute right-2 top-2 z-10 rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-ink-500">
+            Page 1
+          </span>
+          {breaks.map((y, i) => (
+            <div key={i} className="pointer-events-none absolute left-0 right-0 z-10" style={{ top: y }}>
+              <div className="border-t-2 border-dashed border-brand-300" />
+              <span className="absolute -top-2.5 right-2 rounded bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700">
+                Page {i + 2}
+              </span>
+            </div>
+          ))}
+        </>
+      )}
+
       {isEmpty ? (
         <div className="py-16 text-center text-sm text-ink-500">
           Your résumé preview appears here as you type.

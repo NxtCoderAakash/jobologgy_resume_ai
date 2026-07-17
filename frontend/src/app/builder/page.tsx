@@ -501,7 +501,7 @@ function Builder() {
         </div>
 
         <div
-          className="grid gap-6 [grid-template-areas:'rail'_'form'_'preview'] md:grid-cols-[minmax(0,1fr)_minmax(0,340px)] md:[grid-template-areas:'rail_rail'_'form_preview'] lg:grid-cols-[220px_minmax(0,1fr)_minmax(0,420px)] lg:[grid-template-areas:'rail_form_preview']"
+          className="grid gap-6 [grid-template-areas:'rail'_'form'_'preview'] md:grid-cols-[minmax(0,1fr)_minmax(0,400px)] md:[grid-template-areas:'rail_rail'_'form_preview'] lg:grid-cols-[210px_minmax(0,600px)_minmax(460px,1fr)] lg:[grid-template-areas:'rail_form_preview']"
         >
           <div className="[grid-area:rail]">
             <StepRail active={step} completed={validation.completed} onGo={setStep} />

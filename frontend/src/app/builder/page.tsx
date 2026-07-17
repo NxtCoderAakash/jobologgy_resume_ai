@@ -33,7 +33,8 @@ import {
   renderCvPdf,
 } from "@/lib/builderApi";
 import { validateCv } from "@/lib/builderValidation";
-import { emptyCv, STEPS, type CvData, type DraftMeta, type StepId } from "@/types/builder";
+import { takeStudioCv } from "@/lib/handoff";
+import { emptyCv, normalizeCv, STEPS, type CvData, type DraftMeta, type StepId } from "@/types/builder";
 
 const IMPORT_MESSAGES = [
   "Reading your file…",
@@ -125,7 +126,15 @@ function Builder() {
 
       const token = data.session.access_token;
       const wanted = searchParams.get("draft");
-      if (wanted) {
+      // Optimizer → Studio hand-off: open pre-filled with the optimized résumé.
+      const studio = wanted ? null : takeStudioCv();
+      if (studio) {
+        setCv(normalizeCv(studio.cv));
+        setTitle(studio.title || "Optimized résumé");
+        setPhase("editing");
+        // Mark dirty so autosave persists it as a new draft.
+        scheduleSave(normalizeCv(studio.cv), studio.title || "Optimized résumé");
+      } else if (wanted) {
         try {
           const d = await getDraft({ id: wanted, token });
           if (cancelled) return;

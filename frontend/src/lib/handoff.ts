@@ -6,6 +6,7 @@
  */
 
 import type { AnalyzerResult } from "@/types/analyzer";
+import type { CvData } from "@/types/builder";
 
 export interface Handoff {
   resumeText?: string;
@@ -58,4 +59,27 @@ export function takeHandoff(): Handoff | null {
     file,
     priorScore: stored?.priorScore ?? null,
   };
+}
+
+// ---- Optimizer → Résumé Studio hand-off (structured CV) ----
+const STUDIO_KEY = "jobologgy.studioCv";
+
+/** Stash a structured CV so the Studio can open pre-filled with it. */
+export function setStudioCv(cv: CvData, title: string): void {
+  try {
+    sessionStorage.setItem(STUDIO_KEY, JSON.stringify({ cv, title }));
+  } catch {
+    /* storage full/blocked */
+  }
+}
+
+/** Read AND clear the Studio CV hand-off (one-shot). */
+export function takeStudioCv(): { cv: CvData; title: string } | null {
+  try {
+    const raw = sessionStorage.getItem(STUDIO_KEY);
+    sessionStorage.removeItem(STUDIO_KEY);
+    return raw ? (JSON.parse(raw) as { cv: CvData; title: string }) : null;
+  } catch {
+    return null;
+  }
 }

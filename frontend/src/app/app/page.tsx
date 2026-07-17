@@ -75,6 +75,8 @@ export default function WorkspacePage() {
   // No-JD "general scan" consent flow.
   const [showNoJd, setShowNoJd] = useState(false);
   const [lastRunGeneral, setLastRunGeneral] = useState(false);
+  // Once results are in, inputs collapse to a summary; "Edit" re-expands them.
+  const [editing, setEditing] = useState(false);
 
   // Route guard.
   useEffect(() => {
@@ -181,6 +183,7 @@ export default function WorkspacePage() {
   /** Fire the optimize request with the chosen ATS targets and confirmed skills. */
   async function runOptimize(confirmedSkills: string[]) {
     setShowSkillDialog(false);
+    setEditing(false);
     setLastRunGeneral(jobDescription.trim().length === 0);
     setBusy(true);
     try {
@@ -243,8 +246,30 @@ export default function WorkspacePage() {
         )}
 
         <form onSubmit={onSubmit} className="mt-8">
+          {/* After results (and not editing), collapse inputs to a summary bar. */}
+          {!busy && result && !editing && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-card">
+              <span className="text-sm font-semibold text-ink-900">
+                📄 {usePaste ? "Pasted résumé" : file?.name || "Your résumé"}
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="text-sm text-ink-700">
+                {lastRunGeneral
+                  ? "General market-standard optimization"
+                  : "Optimized for your job description"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="btn-ghost ml-auto px-4 py-2 text-sm"
+              >
+                ✎ Edit &amp; re-optimize
+              </button>
+            </div>
+          )}
+
           {/* Inputs — collapse to a compact summary while optimizing to free up space. */}
-          {!busy && (
+          {!busy && (!result || editing) && (
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Résumé input */}
               <div className="card">
@@ -291,10 +316,17 @@ export default function WorkspacePage() {
             <p className="mt-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
           )}
 
-          {!busy && (
-            <button type="submit" className="btn-primary mt-6">
-              Optimize my résumé →
-            </button>
+          {!busy && (!result || editing) && (
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button type="submit" className="btn-primary">
+                {result ? "Re-optimize my résumé →" : "Optimize my résumé →"}
+              </button>
+              {result && editing && (
+                <button type="button" className="btn-ghost" onClick={() => setEditing(false)}>
+                  Cancel
+                </button>
+              )}
+            </div>
           )}
 
           {busy && (

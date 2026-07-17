@@ -291,7 +291,7 @@ export default function WorkspacePage() {
   return (
     <main className="min-h-screen">
       <NavBar />
-      <div className="mx-auto max-w-6xl px-6 py-10">
+      <div className="mx-auto max-w-[1600px] px-6 py-10 lg:px-10">
         <h1 className="text-3xl font-extrabold text-ink-900">Résumé Optimizer</h1>
         <p className="mt-1 text-ink-500">
           Upload your CV and a job description — get an ATS-optimized résumé, a before/after

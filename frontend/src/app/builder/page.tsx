@@ -461,34 +461,54 @@ function Builder() {
   // ---- editing ----
   const stepIndex = STEPS.findIndex((s) => s.id === step);
   const stepMeta = STEPS[stepIndex];
+  const sections = STEPS.filter((s) => s.id !== "finish");
+  const doneCount = sections.filter((s) => validation.completed[s.id]).length;
+  const pct = Math.round((doneCount / sections.length) * 100);
 
   return (
     <main className="min-h-screen">
       <NavBar />
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        {/* Header row: title + save state + mobile preview toggle */}
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <input
-            aria-label="Draft title"
-            className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 py-1 text-xl font-extrabold text-ink-900 outline-none transition hover:border-slate-200 focus:border-brand-500"
-            value={title}
-            onChange={(e) => changeTitle(e.target.value)}
-          />
-          <SaveBadge state={saveState} />
-          <button
-            type="button"
-            onClick={() => setShowPreview((v) => !v)}
-            className="btn-ghost px-4 py-2 text-sm lg:hidden"
-          >
-            {showPreview ? "Edit" : "Preview"}
-          </button>
+        {/* Header: title + save state + overall progress + phone preview toggle */}
+        <div className="mb-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              aria-label="Draft title"
+              className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 py-1 text-xl font-extrabold text-ink-900 outline-none transition hover:border-slate-200 focus:border-brand-500"
+              value={title}
+              onChange={(e) => changeTitle(e.target.value)}
+            />
+            <SaveBadge state={saveState} />
+            <button
+              type="button"
+              onClick={() => setShowPreview((v) => !v)}
+              className="btn-ghost px-4 py-2 text-sm md:hidden"
+            >
+              {showPreview ? "Edit" : "Preview"}
+            </button>
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            <div className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-brand-600 transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="shrink-0 text-xs font-semibold text-ink-500">
+              {doneCount}/{sections.length} sections
+            </span>
+          </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)_minmax(0,420px)]">
-          <StepRail active={step} completed={validation.completed} onGo={setStep} />
+        <div
+          className="grid gap-6 [grid-template-areas:'rail'_'form'_'preview'] md:grid-cols-[minmax(0,1fr)_minmax(0,340px)] md:[grid-template-areas:'rail_rail'_'form_preview'] lg:grid-cols-[220px_minmax(0,1fr)_minmax(0,420px)] lg:[grid-template-areas:'rail_form_preview']"
+        >
+          <div className="[grid-area:rail]">
+            <StepRail active={step} completed={validation.completed} onGo={setStep} />
+          </div>
 
-          {/* Form column (hidden on mobile when previewing) */}
-          <div className={showPreview ? "hidden lg:block" : ""}>
+          {/* Form column (on phones, hidden while previewing; always shown md+) */}
+          <div className={`[grid-area:form] ${showPreview ? "hidden md:block" : ""}`}>
             <div className="card">
               <div className="mb-4">
                 <h2 className="text-xl font-bold text-ink-900">{stepMeta.label}</h2>
@@ -538,9 +558,12 @@ function Builder() {
             </div>
           </div>
 
-          {/* Preview column */}
-          <div className={`${showPreview ? "" : "hidden"} lg:block`}>
-            <div className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+          {/* Preview column (on phones, shown only while previewing; always shown md+) */}
+          <div className={`[grid-area:preview] ${showPreview ? "" : "hidden md:block"}`}>
+            <div className="md:sticky md:top-24 md:max-h-[calc(100vh-7rem)] md:overflow-y-auto">
+              <p className="mb-2 hidden text-xs font-semibold uppercase tracking-wide text-ink-500 md:block">
+                Live preview
+              </p>
               <CvPreview cv={cv} />
             </div>
           </div>

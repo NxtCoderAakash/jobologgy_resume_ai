@@ -455,6 +455,7 @@ export default function WorkspacePage() {
           setShowNoJd(false);
           jdRef.current?.focus();
         }}
+        onDismiss={() => setShowNoJd(false)}
       />
 
       {/* Confirm before aborting an in-flight optimize */}
@@ -464,8 +465,12 @@ export default function WorkspacePage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="stop-title"
+          onClick={() => setConfirmStop(false)}
         >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-card">
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-card"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 id="stop-title" className="text-xl font-extrabold text-ink-900">
               Stop and edit?
             </h3>
@@ -500,8 +505,12 @@ export default function WorkspacePage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="opt-dialog-title"
+          onClick={() => setShowSkillDialog(false)}
         >
-          <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-card">
+          <div
+            className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-card"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between gap-3">
               <h3 id="opt-dialog-title" className="text-xl font-extrabold text-ink-900">
                 {dialogStep === 1

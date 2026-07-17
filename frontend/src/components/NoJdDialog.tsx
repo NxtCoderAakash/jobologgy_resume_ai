@@ -9,12 +9,15 @@ export default function NoJdDialog({
   open,
   onProceed,
   onAddJd,
+  onDismiss,
 }: {
   open: boolean;
   /** User approved scanning without a JD. */
   onProceed: () => void;
   /** User wants to go back and paste a JD (caller should focus the textarea). */
   onAddJd: () => void;
+  /** Clicking the backdrop just closes the dialog. */
+  onDismiss?: () => void;
 }) {
   if (!open) return null;
   return (
@@ -23,8 +26,12 @@ export default function NoJdDialog({
       role="dialog"
       aria-modal="true"
       aria-labelledby="nojd-title"
+      onClick={onDismiss}
     >
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-card">
+      <div
+        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-card"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h3 id="nojd-title" className="text-xl font-extrabold text-ink-900">
           No job description?
         </h3>

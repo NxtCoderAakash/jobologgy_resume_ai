@@ -338,6 +338,7 @@ export default function AnalyzerPage() {
           setShowNoJd(false);
           jdRef.current?.focus();
         }}
+        onDismiss={() => setShowNoJd(false)}
       />
 
       {/* Confirm before aborting an in-flight scan */}
@@ -347,8 +348,12 @@ export default function AnalyzerPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="stop-title"
+          onClick={() => setConfirmStop(false)}
         >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-card">
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-card"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 id="stop-title" className="text-xl font-extrabold text-ink-900">
               Stop and edit?
             </h3>

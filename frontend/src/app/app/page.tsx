@@ -14,6 +14,7 @@ import AnalysisReport from "@/components/AnalysisReport";
 import LoadingProgress from "@/components/LoadingProgress";
 import ScanningPreview from "@/components/ScanningPreview";
 import NoJdDialog from "@/components/NoJdDialog";
+import ResumeStylePreview from "@/components/ResumeStylePreview";
 
 /** Read an image file and downscale it to a small square-ish JPEG data URL. */
 async function readResizedPhoto(file: File): Promise<string> {
@@ -457,16 +458,24 @@ export default function WorkspacePage() {
             {/* Step 1 — résumé visual style */}
             {dialogStep === 1 && (
               <div className="mt-4 space-y-3">
+                <p className="text-xs text-ink-500">
+                  Pick a look for your generated CV. Previews below are sample layouts — your own
+                  content fills the real résumé.
+                </p>
                 {(
                   [
                     {
                       key: "standard",
-                      title: "Standard (ATS-safe)",
+                      title: "Standard",
+                      atsTag: "ATS-safe",
+                      tagClass: "bg-emerald-100 text-emerald-700",
                       desc: "Clean single-column layout that parses reliably in applicant tracking systems. Best for online job applications.",
                     },
                     {
                       key: "creative",
                       title: "Colourful + photo",
+                      atsTag: "Not ATS-friendly",
+                      tagClass: "bg-amber-100 text-amber-700",
                       desc: "A bold, modern design with your photo. Great for portfolios, networking, or emailing directly to a person.",
                     },
                   ] as const
@@ -475,15 +484,16 @@ export default function WorkspacePage() {
                     type="button"
                     key={opt.key}
                     onClick={() => setCvStyle(opt.key)}
-                    className={`w-full rounded-xl border-2 px-4 py-3 text-left transition ${
+                    className={`block w-full rounded-xl border-2 p-3 text-left transition ${
                       cvStyle === opt.key
                         ? "border-brand-600 bg-brand-50"
                         : "border-gray-200 hover:border-brand-300"
                     }`}
                   >
-                    <div className="flex items-center gap-2">
+                    <ResumeStylePreview variant={opt.key} />
+                    <div className="mt-3 flex items-center gap-2">
                       <span
-                        className={`grid h-4 w-4 place-items-center rounded-full border-2 ${
+                        className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 ${
                           cvStyle === opt.key ? "border-brand-600" : "border-gray-300"
                         }`}
                       >
@@ -492,6 +502,11 @@ export default function WorkspacePage() {
                         )}
                       </span>
                       <span className="font-semibold text-ink-900">{opt.title}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${opt.tagClass}`}
+                      >
+                        {opt.atsTag}
+                      </span>
                     </div>
                     <p className="mt-1 pl-6 text-xs text-ink-500">{opt.desc}</p>
                   </button>

@@ -95,16 +95,22 @@ export function renderCvHtml(cv: RewrittenCV): string {
     font-size: 11pt; text-transform: uppercase; letter-spacing: 1px;
     color: #0f172a; border-bottom: 1.5px solid #2563eb;
     padding-bottom: 3px; margin: 18px 0 8px;
+    /* keep a section heading with the first entry that follows it */
+    break-after: avoid; page-break-after: avoid;
   }
-  section { margin-bottom: 4px; }
-  .entry { margin-bottom: 10px; }
+  section { margin-bottom: 4px; break-inside: auto; }
+  /* never split a single job/education/project entry across a page boundary */
+  .entry {
+    margin-bottom: 10px;
+    break-inside: avoid; page-break-inside: avoid;
+  }
   .entry-head { display: flex; justify-content: space-between; align-items: baseline; }
   .entry-title { font-weight: 700; color: #111827; }
   .entry-dates { font-size: 9pt; color: #6b7280; white-space: nowrap; padding-left: 10px; }
   .entry-sub { font-size: 9.5pt; color: #374151; font-style: italic; margin-bottom: 3px; }
   .entry-desc { font-size: 9.8pt; color: #374151; margin: 2px 0; }
   ul { margin: 4px 0 0; padding-left: 18px; }
-  li { margin-bottom: 3px; }
+  li { margin-bottom: 3px; break-inside: avoid; page-break-inside: avoid; }
   .skills { display: flex; flex-wrap: wrap; gap: 6px; }
   .skill { background: #eff6ff; color: #1d4ed8; border-radius: 4px; padding: 2px 8px; font-size: 9pt; }
   .inline-list { columns: 2; }

@@ -140,87 +140,102 @@ export default function AnalyzerPage() {
           specific advice. Your résumé is scored as-is; nothing is rewritten or stored.
         </p>
 
-        <form onSubmit={onSubmit} className="mt-8 grid gap-6 lg:grid-cols-2">
-          <div className="card">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-ink-900">Your résumé</h2>
-              <button
-                type="button"
-                onClick={() => setUsePaste((v) => !v)}
-                className="text-sm font-semibold text-brand-600 hover:underline"
-              >
-                {usePaste ? "Upload a file instead" : "Paste text instead"}
-              </button>
-            </div>
-            {usePaste ? (
-              <textarea
-                className="input min-h-[220px] resize-y"
-                placeholder="Paste your current résumé text here…"
-                value={resumeText}
-                onChange={(e) => setResumeText(e.target.value)}
-              />
-            ) : (
-              <FileDropzone file={file} onFile={setFile} />
-            )}
-          </div>
-
-          <div className="card">
-            <h2 className="mb-3 text-lg font-bold text-ink-900">
-              Job description{" "}
-              <span className="text-sm font-medium text-ink-500">(optional)</span>
-            </h2>
-            <textarea
-              ref={jdRef}
-              className="input min-h-[220px] resize-y"
-              placeholder="Paste the full job description you're targeting… or leave empty for a general market-standard scan."
-              value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-            />
-          </div>
-
-          <div className="lg:col-span-2">
-            {error && (
-              <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
-            )}
-            <button type="submit" disabled={busy} className="btn-primary">
-              {busy ? (
-                <>
-                  <span
-                    aria-hidden
-                    className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+        <form onSubmit={onSubmit} className="mt-8">
+          {/* Inputs — collapse to a compact summary while scanning to free up space. */}
+          {!busy && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="card">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-ink-900">Your résumé</h2>
+                  <button
+                    type="button"
+                    onClick={() => setUsePaste((v) => !v)}
+                    className="text-sm font-semibold text-brand-600 hover:underline"
+                  >
+                    {usePaste ? "Upload a file instead" : "Paste text instead"}
+                  </button>
+                </div>
+                {usePaste ? (
+                  <textarea
+                    className="input min-h-[220px] resize-y"
+                    placeholder="Paste your current résumé text here…"
+                    value={resumeText}
+                    onChange={(e) => setResumeText(e.target.value)}
                   />
-                  Scoring your résumé…
-                </>
-              ) : (
-                "Score my résumé →"
-              )}
-            </button>
+                ) : (
+                  <FileDropzone file={file} onFile={setFile} />
+                )}
+              </div>
 
-            {busy && (
-              <div ref={loadingRef} className="mt-6 grid gap-6 scroll-mt-24 lg:grid-cols-2">
-                <ScanningPreview
-                  file={usePaste ? null : file}
-                  resumeText={usePaste ? resumeText : undefined}
-                />
-                <LoadingProgress
-                  title={
-                    lastRunGeneral
-                      ? "Scoring your résumé against market standards…"
-                      : "Scoring your résumé against the job…"
-                  }
-                  expectedSeconds={15}
-                  messages={SCORING_MESSAGES}
-                  done={!!pending}
-                  doneMessage="Score ready — here are your results…"
-                  onDone={() => {
-                    setResult(pending);
-                    setPending(null);
-                    setBusy(false);
-                  }}
+              <div className="card">
+                <h2 className="mb-3 text-lg font-bold text-ink-900">
+                  Job description{" "}
+                  <span className="text-sm font-medium text-ink-500">(optional)</span>
+                </h2>
+                <textarea
+                  ref={jdRef}
+                  className="input min-h-[220px] resize-y"
+                  placeholder="Paste the full job description you're targeting… or leave empty for a general market-standard scan."
+                  value={jobDescription}
+                  onChange={(e) => setJobDescription(e.target.value)}
                 />
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {error && !busy && (
+            <p className="mt-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+          )}
+
+          {!busy && (
+            <button type="submit" className="btn-primary mt-6">
+              Score my résumé →
+            </button>
+          )}
+
+          {busy && (
+            <div ref={loadingRef} className="scroll-mt-24">
+              {/* Compact summary of what's being scanned */}
+              <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-card">
+                <span className="text-sm font-semibold text-ink-900">
+                  📄 {usePaste ? "Pasted résumé" : file?.name || "Your résumé"}
+                </span>
+                <span className="text-slate-300">•</span>
+                <span className="text-sm text-ink-700">
+                  {lastRunGeneral
+                    ? "General market-standard scan"
+                    : "Scored against your job description"}
+                </span>
+              </div>
+              {/* Scan row: fills the width on wide screens, wraps on small */}
+              <div className="flex flex-col gap-6 md:flex-row md:items-start">
+                <div className="md:w-2/5 lg:w-1/3">
+                  <ScanningPreview
+                    file={usePaste ? null : file}
+                    resumeText={usePaste ? resumeText : undefined}
+                  />
+                </div>
+                <div className="flex-1">
+                  <LoadingProgress
+                    title={
+                      lastRunGeneral
+                        ? "Scoring your résumé against market standards…"
+                        : "Scoring your résumé against the job…"
+                    }
+                    expectedSeconds={15}
+                    messages={SCORING_MESSAGES}
+                    done={!!pending}
+                    doneMessage="Score ready — here are your results…"
+                    onDone={() => {
+                      setResult(pending);
+                      setPending(null);
+                      setBusy(false);
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </form>
 
         {result && (

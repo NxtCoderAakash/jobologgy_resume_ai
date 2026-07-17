@@ -559,7 +559,7 @@ export function ExtrasForm({ cv, patch }: FormProps) {
               <Field label="Project name">
                 <input
                   className="input py-2"
-                  placeholder="Jobologgy — AI résumé optimizer"
+                  placeholder="Jobologyy — AI résumé optimizer"
                   value={proj.name}
                   onChange={(e) =>
                     patch((p) => ({

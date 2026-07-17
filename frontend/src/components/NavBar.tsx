@@ -46,7 +46,7 @@ export default function NavBar() {
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-white">
             ✦
           </span>
-          Jobologgy<span className="text-brand-600">AI</span>
+          Jobologyy<span className="text-brand-600">AI</span>
         </Link>
         <nav className="flex items-center gap-3 text-sm">
           {email ? (

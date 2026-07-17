@@ -113,7 +113,7 @@ export function renderCvHtml(cv: RewrittenCV): string {
   li { margin-bottom: 3px; break-inside: avoid; page-break-inside: avoid; }
   .skills { display: flex; flex-wrap: wrap; gap: 6px; }
   .skill { background: #eff6ff; color: #1d4ed8; border-radius: 4px; padding: 2px 8px; font-size: 9pt; }
-  .inline-list { columns: 2; }
+  .inline-list { break-inside: avoid; page-break-inside: avoid; }
   .summary { color: #374151; }
 </style></head>
 <body>

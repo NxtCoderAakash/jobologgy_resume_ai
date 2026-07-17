@@ -141,7 +141,7 @@ export function renderCreativeCvHtml(cv: RewrittenCV, photoDataUrl?: string): st
     background: #f5edff; color: #7c3aed; border: 1px solid #e6d5ff;
     border-radius: 999px; padding: 3px 12px; font-size: 9pt; font-weight: 600;
   }
-  .inline-list { columns: 2; }
+  .inline-list { break-inside: avoid; page-break-inside: avoid; }
 </style></head>
 <body>
   <div class="band">

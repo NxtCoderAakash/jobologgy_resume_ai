@@ -5,13 +5,26 @@ import type { AnalyzeResult } from "@/types/analysis";
 import { setStudioCv } from "@/lib/handoff";
 import { normalizeCv, type CvData } from "@/types/builder";
 
-export default function DownloadCard({ result }: { result: AnalyzeResult }) {
+export default function DownloadCard({
+  result,
+  cvStyle = "standard",
+  photoDataUrl,
+}: {
+  result: AnalyzeResult;
+  cvStyle?: "standard" | "creative";
+  photoDataUrl?: string | null;
+}) {
   const router = useRouter();
 
-  /** Carry the optimized résumé into the Résumé Studio to keep editing it. */
+  /** Carry the optimized résumé — and the chosen style + photo — into the Studio. */
   function editInStudio() {
+    const base = normalizeCv(result.analysis.rewrittenCV as unknown as Partial<CvData>);
     setStudioCv(
-      normalizeCv(result.analysis.rewrittenCV as unknown as Partial<CvData>),
+      {
+        ...base,
+        style: cvStyle,
+        photoDataUrl: cvStyle === "creative" ? photoDataUrl ?? undefined : undefined,
+      },
       "Optimized résumé",
     );
     router.push("/builder");

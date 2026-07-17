@@ -23,6 +23,8 @@ export interface CvProject {
   bullets: string[];
 }
 
+export type CvStyle = "standard" | "creative";
+
 export interface CvData {
   fullName: string;
   title: string;
@@ -38,6 +40,9 @@ export interface CvData {
   education: CvEducation[];
   projects: CvProject[];
   certifications: string[];
+  /** Visual template + optional applicant photo (kept in the CV so it persists). */
+  style: CvStyle;
+  photoDataUrl?: string;
 }
 
 export function emptyCv(): CvData {
@@ -51,6 +56,7 @@ export function emptyCv(): CvData {
     education: [],
     projects: [],
     certifications: [],
+    style: "standard",
   };
 }
 
@@ -99,6 +105,8 @@ export function normalizeCv(raw: Partial<CvData> | null | undefined): CvData {
       bullets: p.bullets ?? [],
     })),
     certifications: raw.certifications ?? [],
+    style: raw.style === "creative" ? "creative" : "standard",
+    photoDataUrl: raw.photoDataUrl,
   };
 }
 

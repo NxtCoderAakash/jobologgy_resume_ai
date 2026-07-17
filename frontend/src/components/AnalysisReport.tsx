@@ -6,10 +6,18 @@ import KeywordDiff from "./KeywordDiff";
 import ImprovementList from "./ImprovementList";
 import DownloadCard from "./DownloadCard";
 
-export default function AnalysisReport({ result }: { result: AnalyzeResult }) {
+export default function AnalysisReport({
+  result,
+  cvStyle,
+  photoDataUrl,
+}: {
+  result: AnalyzeResult;
+  cvStyle?: "standard" | "creative";
+  photoDataUrl?: string | null;
+}) {
   return (
     <div className="space-y-6">
-      <DownloadCard result={result} />
+      <DownloadCard result={result} cvStyle={cvStyle} photoDataUrl={photoDataUrl} />
       <div className="grid gap-6 lg:grid-cols-2">
         <ScoreComparison analysis={result.analysis} />
         <KeywordDiff analysis={result.analysis} />

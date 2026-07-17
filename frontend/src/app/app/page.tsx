@@ -443,7 +443,11 @@ export default function WorkspacePage() {
         {result && (
           <div ref={resultRef} className="mt-12 scroll-mt-6">
             <h2 className="mb-4 text-2xl font-extrabold text-ink-900">Your results</h2>
-            <AnalysisReport result={result} />
+            <AnalysisReport
+              result={result}
+              cvStyle={cvStyle}
+              photoDataUrl={cvStyle === "creative" ? photoDataUrl : null}
+            />
           </div>
         )}
       </div>

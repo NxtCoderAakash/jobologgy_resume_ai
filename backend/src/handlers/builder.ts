@@ -11,7 +11,9 @@ import { sendJson, sendPdf, readRawBody, HttpError } from "../lib/http.js";
 import { extractResumeText } from "../services/extractText.js";
 import { structureResume, suggestForField } from "../services/builderAi.js";
 import { renderBuilderCvHtml } from "../services/pdf/builderCvTemplate.js";
+import { renderCreativeCvHtml } from "../services/pdf/creativeCvTemplate.js";
 import { htmlToPdf } from "../services/pdf/render.js";
+import type { BuilderCv } from "../types/builder.js";
 import { getAdminClient } from "../services/supabase.js";
 import {
   builderCvSchema,
@@ -67,7 +69,25 @@ export async function handleBuilderSuggest(
   sendJson(res, 200, { suggestion });
 }
 
-/** POST /api/builder/render — edited CV JSON -> PDF bytes. */
+/** Drop empty entries/bullets so the (draft-tolerant) creative template renders clean. */
+function cleanForCreative(cv: BuilderCv) {
+  const t = (s: string) => s.trim().length > 0;
+  return {
+    ...cv,
+    skills: cv.skills.filter(t),
+    certifications: cv.certifications.filter(t),
+    contact: { ...cv.contact, links: cv.contact.links.filter(t) },
+    experience: cv.experience
+      .filter((e) => t(e.role) || t(e.company) || e.bullets.some(t))
+      .map((e) => ({ ...e, bullets: e.bullets.filter(t) })),
+    education: cv.education.filter((e) => t(e.degree) || t(e.institution)),
+    projects: cv.projects
+      .filter((p) => t(p.name) || t(p.description))
+      .map((p) => ({ ...p, bullets: (p.bullets || []).filter(t) })),
+  };
+}
+
+/** POST /api/builder/render — edited CV JSON -> PDF bytes (standard or creative). */
 export async function handleBuilderRender(
   req: IncomingMessage,
   res: ServerResponse,
@@ -77,7 +97,14 @@ export async function handleBuilderRender(
   const cv = builderCvSchema.safeParse(body?.cv);
   if (!cv.success) throw new HttpError(400, "Invalid CV payload");
 
-  const pdf = await htmlToPdf(renderBuilderCvHtml(cv.data), { cssPageSize: true });
+  // The creative template mirrors the optimizer's; photoDataUrl is validated
+  // inside it (base64 image only), so junk can't break the render.
+  const html =
+    cv.data.style === "creative"
+      ? renderCreativeCvHtml(cleanForCreative(cv.data), cv.data.photoDataUrl)
+      : renderBuilderCvHtml(cv.data);
+
+  const pdf = await htmlToPdf(html, { cssPageSize: true });
   const safeName =
     (cv.data.fullName || "resume").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") ||
     "resume";

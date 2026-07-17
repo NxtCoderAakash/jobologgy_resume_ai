@@ -53,6 +53,10 @@ export const builderCvSchema = z.object({
     )
     .catch([]),
   certifications: strArr.default([]),
+  // Presentation (kept inside the CV JSON so it persists with the draft and
+  // rides along to /render without any extra plumbing).
+  style: z.enum(["standard", "creative"]).catch("standard").default("standard"),
+  photoDataUrl: z.string().max(8_000_000).optional().catch(undefined),
 });
 
 export type BuilderCv = z.infer<typeof builderCvSchema>;
@@ -68,6 +72,7 @@ export function emptyCv(): BuilderCv {
     education: [],
     projects: [],
     certifications: [],
+    style: "standard",
   };
 }
 

@@ -34,6 +34,7 @@ import {
 } from "@/lib/builderApi";
 import { validateCv } from "@/lib/builderValidation";
 import { takeStudioCv } from "@/lib/handoff";
+import { readResizedPhoto } from "@/lib/photo";
 import { emptyCv, normalizeCv, STEPS, type CvData, type DraftMeta, type StepId } from "@/types/builder";
 
 const IMPORT_MESSAGES = [
@@ -294,6 +295,19 @@ function Builder() {
     }
   }
 
+  // ---- template style + photo ----
+
+  async function onStudioPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    try {
+      const url = await readResizedPhoto(f);
+      patch((p) => ({ ...p, photoDataUrl: url }));
+    } catch {
+      /* ignore unreadable image */
+    }
+  }
+
   // ---- finish/download ----
 
   async function download() {
@@ -498,6 +512,57 @@ function Builder() {
               {doneCount}/{sections.length} sections
             </span>
           </div>
+        </div>
+
+        {/* Template picker: standard vs colourful + photo */}
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-semibold text-ink-700">Template</span>
+          <div className="inline-flex rounded-lg border border-slate-200 p-0.5">
+            {([
+              { key: "standard", label: "Standard" },
+              { key: "creative", label: "Colourful + photo" },
+            ] as const).map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => patch((p) => ({ ...p, style: opt.key }))}
+                className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${
+                  cv.style === opt.key
+                    ? "bg-brand-600 text-white"
+                    : "text-ink-700 hover:bg-slate-100"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {cv.style === "creative" && (
+            <div className="flex items-center gap-2">
+              {cv.photoDataUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={cv.photoDataUrl} alt="Your photo" className="h-8 w-8 rounded-full object-cover" />
+              ) : (
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-100 text-sm">📷</span>
+              )}
+              <label className="btn-ghost cursor-pointer px-3 py-1.5 text-sm">
+                {cv.photoDataUrl ? "Change photo" : "Add photo"}
+                <input type="file" accept="image/*" className="hidden" onChange={onStudioPhoto} />
+              </label>
+              {cv.photoDataUrl && (
+                <button
+                  type="button"
+                  onClick={() => patch((p) => ({ ...p, photoDataUrl: undefined }))}
+                  className="text-sm font-medium text-ink-500 hover:text-red-600"
+                >
+                  Remove
+                </button>
+              )}
+              <span className="text-xs text-ink-500">
+                Colourful/photo résumés parse poorly in ATS — best for direct sharing.
+              </span>
+            </div>
+          )}
         </div>
 
         <div

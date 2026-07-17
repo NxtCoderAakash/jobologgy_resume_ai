@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -12,8 +12,22 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Already-authenticated users shouldn't see login/signup — bounce them to the app.
+  const [checking, setChecking] = useState(true);
 
   const isSignup = mode === "signup";
+
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      if (data.session) router.replace("/app");
+      else setChecking(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,6 +53,10 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (checking) {
+    return <p className="mt-20 text-center text-ink-500">Loading…</p>;
   }
 
   return (

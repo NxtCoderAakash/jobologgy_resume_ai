@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { analyzeResume } from "@/lib/api";
 import { takeHandoff } from "@/lib/handoff";
+import { ATS_SYSTEMS, type AtsSystem } from "@/lib/atsSystems";
 import type { AnalyzeResult } from "@/types/analysis";
 import type { AnalyzerResult } from "@/types/analyzer";
 import NavBar from "@/components/NavBar";
@@ -49,11 +50,19 @@ export default function WorkspacePage() {
     priorScore: AnalyzerResult | null;
   } | null>(null);
 
-  // "Add skills from the JD" dialog state.
+  // Pre-optimize dialog state (ATS targeting + optional JD skills).
   const [showSkillDialog, setShowSkillDialog] = useState(false);
   const [offeredSkills, setOfferedSkills] = useState<string[]>([]);
   const [checkedSkills, setCheckedSkills] = useState<Record<string, boolean>>({});
   const [extraSkills, setExtraSkills] = useState("");
+
+  // ATS systems the résumé is optimized against.
+  const [atsChecked, setAtsChecked] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(ATS_SYSTEMS.map((a) => [a.key, a.defaultConsidered])),
+  );
+  const [customAts, setCustomAts] = useState<string[]>([]);
+  const [customAtsInput, setCustomAtsInput] = useState("");
+  const [atsInfo, setAtsInfo] = useState<AtsSystem | null>(null); // info dialog target
 
   // Scroll the results into view the moment they're revealed.
   const resultRef = useRef<HTMLDivElement>(null);
@@ -108,6 +117,21 @@ export default function WorkspacePage() {
     return reusablePriorScore()?.keywordAnalysis.missing ?? [];
   }
 
+  /** The ATS systems (built-in ticked + custom) the résumé is optimized against. */
+  function selectedAtsNames(): string[] {
+    const builtin = ATS_SYSTEMS.filter((a) => atsChecked[a.key]).map((a) => a.name);
+    return [...builtin, ...customAts];
+  }
+
+  function addCustomAts() {
+    const names = customAtsInput
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (names.length) setCustomAts((prev) => [...new Set([...prev, ...names])]);
+    setCustomAtsInput("");
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -126,20 +150,16 @@ export default function WorkspacePage() {
       return;
     }
 
-    // If the JD wants skills this résumé doesn't show, ask the user which they
-    // genuinely have before we build the CV — never invent them silently.
-    const missing = missingSkillsToOffer();
-    if (missing.length) {
-      setOfferedSkills(missing);
-      setCheckedSkills({});
-      setExtraSkills("");
-      setShowSkillDialog(true);
-      return;
-    }
-    await runOptimize([]);
+    // Always open the pre-optimize dialog: it shows which ATS systems we'll
+    // target and — if the JD wants skills this résumé doesn't show — asks which
+    // the user genuinely has (never inventing them silently).
+    setOfferedSkills(missingSkillsToOffer());
+    setCheckedSkills({});
+    setExtraSkills("");
+    setShowSkillDialog(true);
   }
 
-  /** Fire the optimize request, optionally adding user-confirmed skills. */
+  /** Fire the optimize request with the chosen ATS targets and confirmed skills. */
   async function runOptimize(confirmedSkills: string[]) {
     setShowSkillDialog(false);
     setBusy(true);
@@ -157,6 +177,7 @@ export default function WorkspacePage() {
         token,
         priorBeforeScore: reusablePriorScore(),
         confirmedSkills,
+        atsSystems: selectedAtsNames(),
       });
       // Don't reveal yet — let the loader complete to 100% first.
       setPending(res);
@@ -286,65 +307,177 @@ export default function WorkspacePage() {
 
       {showSkillDialog && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 px-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 px-4 py-6"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="skill-dialog-title"
+          aria-labelledby="opt-dialog-title"
         >
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-card">
-            <h3 id="skill-dialog-title" className="text-xl font-extrabold text-ink-900">
-              Add skills the job asks for?
+          <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-card">
+            <h3 id="opt-dialog-title" className="text-xl font-extrabold text-ink-900">
+              Before we optimize
             </h3>
-            <p className="mt-2 text-sm text-ink-500">
-              The job description mentions these skills your résumé doesn’t show yet. Tick any you
-              genuinely have — we’ll weave them into your optimized CV. We won’t add skills you
-              don’t confirm.
-            </p>
 
-            <div className="mt-4 space-y-2">
-              {offeredSkills.map((s) => (
-                <label
-                  key={s}
-                  className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50"
+            {/* ATS targeting */}
+            <p className="mt-3 text-sm font-semibold text-ink-700">
+              Optimizing for compatibility with these ATS systems
+            </p>
+            <p className="mt-1 text-xs text-ink-500">
+              These are common applicant tracking systems employers use to screen résumés. Untick
+              any you don’t care about, or add your own.
+            </p>
+            <div className="mt-3 space-y-2">
+              {ATS_SYSTEMS.map((a) => (
+                <div
+                  key={a.key}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2"
                 >
-                  <input
-                    type="checkbox"
-                    checked={!!checkedSkills[s]}
-                    onChange={(e) =>
-                      setCheckedSkills((prev) => ({ ...prev, [s]: e.target.checked }))
-                    }
-                    className="h-4 w-4 accent-brand-600"
-                  />
-                  <span className="text-sm font-medium text-ink-700">{s}</span>
-                </label>
+                  <label className="flex flex-1 cursor-pointer items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={!!atsChecked[a.key]}
+                      onChange={(e) =>
+                        setAtsChecked((prev) => ({ ...prev, [a.key]: e.target.checked }))
+                      }
+                      className="h-4 w-4 accent-brand-600"
+                    />
+                    <span className="text-sm font-medium text-ink-700">{a.name}</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setAtsInfo(a)}
+                    aria-label={`About ${a.name}`}
+                    title={`About ${a.name}`}
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-brand-600 text-xs font-bold text-brand-600 hover:bg-brand-50"
+                  >
+                    i
+                  </button>
+                </div>
               ))}
             </div>
 
-            <div className="mt-4">
-              <label
-                htmlFor="extra-skills"
-                className="text-sm font-semibold text-ink-700"
-              >
-                Other skills from the job description you have (optional)
-              </label>
+            {/* Custom ATS chips */}
+            {customAts.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {customAts.map((name) => (
+                  <span
+                    key={name}
+                    className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700"
+                  >
+                    {name}
+                    <button
+                      type="button"
+                      aria-label={`Remove ${name}`}
+                      onClick={() => setCustomAts((prev) => prev.filter((n) => n !== name))}
+                      className="text-brand-700 hover:text-brand-600"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="mt-2 flex gap-2">
               <input
-                id="extra-skills"
-                className="input mt-1"
-                placeholder="e.g. Docker, GraphQL"
-                value={extraSkills}
-                onChange={(e) => setExtraSkills(e.target.value)}
+                className="input flex-1"
+                placeholder="Add another ATS (e.g. Jobvite)"
+                value={customAtsInput}
+                onChange={(e) => setCustomAtsInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addCustomAts();
+                  }
+                }}
               />
-              <p className="mt-1 text-xs text-ink-500">
-                Comma-separated. Only add skills you can honestly back up in an interview.
-              </p>
+              <button type="button" className="btn-ghost shrink-0" onClick={addCustomAts}>
+                Add
+              </button>
             </div>
 
+            {/* JD skills (only when the résumé is missing some) */}
+            {offeredSkills.length > 0 && (
+              <div className="mt-6 border-t border-gray-100 pt-5">
+                <p className="text-sm font-semibold text-ink-700">
+                  Skills the job asks for that your résumé doesn’t show
+                </p>
+                <p className="mt-1 text-xs text-ink-500">
+                  Tick any you genuinely have — we’ll weave them in. We won’t add skills you don’t
+                  confirm.
+                </p>
+                <div className="mt-3 space-y-2">
+                  {offeredSkills.map((s) => (
+                    <label
+                      key={s}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!checkedSkills[s]}
+                        onChange={(e) =>
+                          setCheckedSkills((prev) => ({ ...prev, [s]: e.target.checked }))
+                        }
+                        className="h-4 w-4 accent-brand-600"
+                      />
+                      <span className="text-sm font-medium text-ink-700">{s}</span>
+                    </label>
+                  ))}
+                </div>
+                <input
+                  className="input mt-3"
+                  placeholder="Other skills you have (comma-separated)"
+                  value={extraSkills}
+                  onChange={(e) => setExtraSkills(e.target.value)}
+                />
+                <p className="mt-1 text-xs text-ink-500">
+                  Only add skills you can honestly back up in an interview.
+                </p>
+              </div>
+            )}
+
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button type="button" className="btn-ghost" onClick={() => runOptimize([])}>
-                Skip — don’t add any
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setShowSkillDialog(false)}
+              >
+                Cancel
               </button>
               <button type="button" className="btn-primary" onClick={confirmSkillsAndOptimize}>
-                Add selected &amp; optimize →
+                Optimize my résumé →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ATS info dialog (nested above the settings dialog) */}
+      {atsInfo && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-ink-900/50 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ats-info-title"
+          onClick={() => setAtsInfo(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h4 id="ats-info-title" className="text-lg font-extrabold text-ink-900">
+              {atsInfo.name}
+            </h4>
+            <p className="mt-2 text-sm text-ink-700">{atsInfo.description}</p>
+            <a
+              href={atsInfo.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-block text-sm font-semibold text-brand-600 hover:underline"
+            >
+              Visit {atsInfo.name} website ↗
+            </a>
+            <div className="mt-6 flex justify-end">
+              <button type="button" className="btn-primary" onClick={() => setAtsInfo(null)}>
+                Close
               </button>
             </div>
           </div>

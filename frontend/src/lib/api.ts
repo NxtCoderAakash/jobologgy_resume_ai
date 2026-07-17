@@ -13,6 +13,8 @@ export interface AnalyzeArgs {
   priorBeforeScore?: AnalyzerResult | null;
   /** Skills the user confirmed they have (from the "add JD skills" dialog). */
   confirmedSkills?: string[];
+  /** ATS systems to optimize the résumé for compatibility with. */
+  atsSystems?: string[];
 }
 
 /**
@@ -28,6 +30,8 @@ export async function analyzeResume(args: AnalyzeArgs): Promise<AnalyzeResult> {
     form.append("priorBeforeScore", JSON.stringify(args.priorBeforeScore));
   if (args.confirmedSkills && args.confirmedSkills.length)
     form.append("confirmedSkills", JSON.stringify(args.confirmedSkills));
+  if (args.atsSystems && args.atsSystems.length)
+    form.append("atsSystems", JSON.stringify(args.atsSystems));
 
   const res = await fetch(`${BACKEND_URL}/api/analyze`, {
     method: "POST",

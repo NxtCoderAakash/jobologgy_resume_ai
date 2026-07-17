@@ -38,6 +38,11 @@ export interface AnalyzeInput {
    * "after" score. The original "before" score is left untouched.
    */
   confirmedSkills?: string[];
+  /**
+   * ATS systems (e.g. Workday, Greenhouse) to optimize compatibility for. Used as
+   * a light targeting hint in the rewrite prompt — not a vendor-specific parser.
+   */
+  atsSystems?: string[];
 }
 
 export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult> {
@@ -73,7 +78,11 @@ export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult>
     ? Promise.resolve(input.priorBefore)
     : scoreResume({ resumeText, jobDescription });
   const [analysis, beforeScore] = await Promise.all([
-    analyzeAndRewrite({ resumeText: augmentedText, jobDescription }),
+    analyzeAndRewrite({
+      resumeText: augmentedText,
+      jobDescription,
+      atsSystems: input.atsSystems,
+    }),
     beforePromise,
   ]);
 
@@ -103,6 +112,11 @@ export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult>
       `\n\nNote: we did not add ${removedSkills.join(", ")} — your résumé doesn't ` +
       `show evidence of ${removedSkills.length > 1 ? "them" : "it"}. ` +
       `If you do have this experience, add it and re-run to raise your score honestly.`;
+  }
+
+  if (input.atsSystems?.length) {
+    analysis.summaryOfChanges +=
+      `\n\nOptimized for compatibility with these ATS systems: ${input.atsSystems.join(", ")}.`;
   }
 
   // 7. Render both PDFs (in parallel)

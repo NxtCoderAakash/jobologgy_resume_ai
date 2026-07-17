@@ -182,6 +182,7 @@ HARD RULES — FORMAT:
 export async function analyzeAndRewrite(params: {
   resumeText: string;
   jobDescription: string;
+  atsSystems?: string[];
 }): Promise<Analysis> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new HttpError(500, "GEMINI_API_KEY is not configured");
@@ -197,7 +198,13 @@ export async function analyzeAndRewrite(params: {
     },
   });
 
-  const userPrompt = `ORIGINAL RÉSUMÉ:\n"""\n${params.resumeText}\n"""\n\nJOB DESCRIPTION:\n"""\n${params.jobDescription}\n"""`;
+  const atsLine =
+    params.atsSystems && params.atsSystems.length
+      ? `\n\nTARGET ATS SYSTEMS: ${params.atsSystems.join(", ")}. Make the rewrite reliably ` +
+        `parseable by these applicant tracking systems — standard section headings, single ` +
+        `column, plain text, no tables/columns/graphics. Do NOT fabricate anything to fit them.`
+      : "";
+  const userPrompt = `ORIGINAL RÉSUMÉ:\n"""\n${params.resumeText}\n"""\n\nJOB DESCRIPTION:\n"""\n${params.jobDescription}\n"""${atsLine}`;
 
   // Up to 3 attempts: retries transient overload (503) and parse/validation failures.
   let lastErr: unknown;

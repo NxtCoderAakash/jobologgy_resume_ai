@@ -22,14 +22,18 @@ function parsePriorBefore(raw: string | undefined): AnalyzerResult | undefined {
   }
 }
 
-/** Parse the user-confirmed skills list (JSON array of strings); ignore anything malformed. */
-function parseConfirmedSkills(raw: string | undefined): string[] | undefined {
+/** Parse a JSON array-of-strings field (confirmed skills / ATS systems); ignore malformed input. */
+function parseStringList(raw: string | undefined): string[] | undefined {
   if (!raw) return undefined;
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return undefined;
-    const skills = parsed.filter((s): s is string => typeof s === "string").slice(0, 30);
-    return skills.length ? skills : undefined;
+    const items = parsed
+      .filter((s): s is string => typeof s === "string")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 30);
+    return items.length ? items : undefined;
   } catch {
     return undefined;
   }
@@ -52,7 +56,8 @@ export async function handleAnalyze(
     pastedText: fields.resumeText,
     file,
     priorBefore: parsePriorBefore(fields.priorBeforeScore),
-    confirmedSkills: parseConfirmedSkills(fields.confirmedSkills),
+    confirmedSkills: parseStringList(fields.confirmedSkills),
+    atsSystems: parseStringList(fields.atsSystems),
   });
 
   sendJson(res, 200, result);

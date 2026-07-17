@@ -59,3 +59,26 @@ body {
 .scan-shimmer {
   animation: scan-shimmer 1.6s ease-in-out infinite;
 }
+
+/* ---- BotMascot: eyes blink (look direction handled inline via React state) ---- */
+@keyframes botBlink {
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+  93%,
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+.bot-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: botBlink 4.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bot-eyes {
+    animation: none;
+  }
+}

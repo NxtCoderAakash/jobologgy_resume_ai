@@ -508,7 +508,9 @@ export default function WorkspacePage() {
           onClick={() => setShowSkillDialog(false)}
         >
           <div
-            className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-card"
+            className={`max-h-[88vh] w-full overflow-y-auto rounded-2xl bg-white p-6 shadow-card ${
+              dialogStep === 1 ? "max-w-2xl" : "max-w-lg"
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3">
@@ -526,11 +528,12 @@ export default function WorkspacePage() {
 
             {/* Step 1 — résumé visual style */}
             {dialogStep === 1 && (
-              <div className="mt-4 space-y-3">
+              <div className="mt-4">
                 <p className="text-xs text-ink-500">
                   Pick a look for your generated CV. Previews below are sample layouts — your own
                   content fills the real résumé.
                 </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {(
                   [
                     {
@@ -580,6 +583,7 @@ export default function WorkspacePage() {
                     <p className="mt-1 pl-6 text-xs text-ink-500">{opt.desc}</p>
                   </button>
                 ))}
+                </div>
 
                 {cvStyle === "creative" && (
                   <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">

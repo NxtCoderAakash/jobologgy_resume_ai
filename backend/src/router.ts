@@ -25,7 +25,8 @@ export async function route(
   const path = url.pathname.replace(/\/+$/, "") || "/";
 
   if (method === "GET" && (path === "/" || path === "/health")) {
-    sendJson(res, 200, { ok: true, service: "jobologgy-backend" });
+    // `rev` bumps with notable backend changes so a deploy can be verified.
+    sendJson(res, 200, { ok: true, service: "jobologgy-backend", rev: "studio-creative-render" });
     return;
   }
 

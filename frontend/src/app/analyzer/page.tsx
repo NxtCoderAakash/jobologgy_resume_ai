@@ -152,7 +152,7 @@ export default function AnalyzerPage() {
   return (
     <main className="min-h-screen">
       <NavBar />
-      <div className="mx-auto max-w-[1600px] px-6 py-10 lg:px-10">
+      <div className="px-4 py-10 sm:px-6 lg:px-12">
         <h1 className="text-3xl font-extrabold text-ink-900">Résumé Analyzer</h1>
         <p className="mt-1 text-ink-500">
           Check how well your résumé fits a job — get an ATS score, keyword match, and

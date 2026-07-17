@@ -339,7 +339,7 @@ function Builder() {
     return (
       <main className="min-h-screen">
         <NavBar />
-        <div className="mx-auto max-w-[1200px] px-6 py-10 lg:px-10">
+        <div className="px-4 py-10 sm:px-6 lg:px-12">
           <h1 className="text-3xl font-extrabold text-ink-900">Résumé Studio</h1>
           <p className="mt-1 text-ink-500">
             Build a polished, ATS-safe résumé section by section — with AI suggestions you
@@ -468,7 +468,7 @@ function Builder() {
   return (
     <main className="min-h-screen">
       <NavBar />
-      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-10">
+      <div className="px-4 py-6 sm:px-6 lg:px-12">
         {/* Header: title + save state + overall progress + phone preview toggle */}
         <div className="mb-5">
           <div className="flex flex-wrap items-center gap-3">

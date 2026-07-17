@@ -82,11 +82,13 @@ export function renderCvHtml(cv: RewrittenCV): string {
 
   return `<!doctype html>
 <html><head><meta charset="utf-8" /><style>
+  /* Real page margins on EVERY page (not just page 1) — see render.ts cssPageSize. */
+  @page { size: A4; margin: 13mm 12mm; }
   * { box-sizing: border-box; }
   body {
     font-family: "Helvetica Neue", Arial, sans-serif;
     color: #1f2937; font-size: 10.5pt; line-height: 1.45;
-    margin: 0; padding: 40px 46px;
+    margin: 0; padding: 0;
   }
   h1 { font-size: 22pt; margin: 0; color: #0f172a; letter-spacing: .3px; }
   .role { font-size: 11.5pt; color: #2563eb; font-weight: 600; margin: 2px 0 6px; }

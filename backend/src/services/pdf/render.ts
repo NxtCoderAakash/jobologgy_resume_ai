@@ -15,16 +15,28 @@ function getBrowser(): Promise<Browser> {
   return browserPromise;
 }
 
-export async function htmlToPdf(html: string): Promise<Buffer> {
+export interface PdfOptions {
+  /**
+   * Let the document's own CSS `@page` rules control page size AND margins.
+   * Templates use this so every page (not just the first) gets proper margins —
+   * with `margin:0` here the template's padding only applies once, so page 2+
+   * content hugs the top edge.
+   */
+  cssPageSize?: boolean;
+}
+
+export async function htmlToPdf(html: string, opts: PdfOptions = {}): Promise<Buffer> {
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
     await page.setContent(html, { waitUntil: "networkidle0" });
-    const pdf = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: { top: "0", bottom: "0", left: "0", right: "0" },
-    });
+    const pdf = opts.cssPageSize
+      ? await page.pdf({ printBackground: true, preferCSSPageSize: true })
+      : await page.pdf({
+          format: "A4",
+          printBackground: true,
+          margin: { top: "0", bottom: "0", left: "0", right: "0" },
+        });
     return Buffer.from(pdf);
   } finally {
     await page.close();

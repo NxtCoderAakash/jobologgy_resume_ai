@@ -141,7 +141,7 @@ export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult>
       ? renderCreativeCvHtml(analysis.rewrittenCV, input.photoDataUrl)
       : renderCvHtml(analysis.rewrittenCV);
   const [cvPdf, reportPdf] = await Promise.all([
-    htmlToPdf(cvHtml),
+    htmlToPdf(cvHtml, { cssPageSize: true }), // per-page margins via @page
     htmlToPdf(renderReportHtml(analysis)),
   ]);
 

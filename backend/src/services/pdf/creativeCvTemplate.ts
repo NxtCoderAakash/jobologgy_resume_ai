@@ -94,6 +94,11 @@ export function renderCreativeCvHtml(cv: RewrittenCV, photoDataUrl?: string): st
 
   return `<!doctype html>
 <html><head><meta charset="utf-8" /><style>
+  /* Full-bleed header on page 1 (margin-top:0), but every later page gets a
+     proper top margin so content never hugs the edge. L/R 0 keeps the band
+     edge-to-edge; the body adds its own horizontal padding. */
+  @page { size: A4; margin: 13mm 0; }
+  @page :first { margin-top: 0; }
   * { box-sizing: border-box; }
   body {
     font-family: "Helvetica Neue", Arial, sans-serif;

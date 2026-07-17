@@ -77,7 +77,7 @@ export async function handleBuilderRender(
   const cv = builderCvSchema.safeParse(body?.cv);
   if (!cv.success) throw new HttpError(400, "Invalid CV payload");
 
-  const pdf = await htmlToPdf(renderBuilderCvHtml(cv.data));
+  const pdf = await htmlToPdf(renderBuilderCvHtml(cv.data), { cssPageSize: true });
   const safeName =
     (cv.data.fullName || "resume").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") ||
     "resume";

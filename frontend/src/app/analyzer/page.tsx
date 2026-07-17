@@ -53,6 +53,9 @@ export default function AnalyzerPage() {
   const [lastRunGeneral, setLastRunGeneral] = useState(false);
   // Once results are in, inputs collapse to a summary; "Edit" re-expands them.
   const [editing, setEditing] = useState(false);
+  // Abort an in-flight score when the user chooses to stop & edit.
+  const abortRef = useRef<AbortController | null>(null);
+  const [confirmStop, setConfirmStop] = useState(false);
 
   // Route guard.
   useEffect(() => {
@@ -102,6 +105,8 @@ export default function AnalyzerPage() {
     setShowNoJd(false);
     setEditing(false);
     setLastRunGeneral(jobDescription.trim().length === 0);
+    const controller = new AbortController();
+    abortRef.current = controller;
     setBusy(true);
     try {
       const { data } = await supabase.auth.getSession();
@@ -115,13 +120,24 @@ export default function AnalyzerPage() {
         file: usePaste ? null : file,
         resumeText: usePaste ? resumeText : undefined,
         token,
+        signal: controller.signal,
       });
       // Don't reveal yet — let the loader complete to 100% first.
       setPending(res);
     } catch (err) {
+      if ((err as Error).name === "AbortError") return; // user stopped it on purpose
       setError((err as Error).message);
       setBusy(false);
     }
+  }
+
+  /** Abort the in-flight score and reopen the inputs for a re-upload. */
+  function stopAndEdit() {
+    abortRef.current?.abort();
+    setConfirmStop(false);
+    setPending(null);
+    setBusy(false);
+    setEditing(true);
   }
 
   if (!ready) {
@@ -238,6 +254,13 @@ export default function AnalyzerPage() {
                     ? "General market-standard scan"
                     : "Scored against your job description"}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setConfirmStop(true)}
+                  className="btn-ghost ml-auto px-3 py-1.5 text-sm"
+                >
+                  ✎ Stop &amp; edit
+                </button>
               </div>
               {/* Scan row: fills the width on wide screens, wraps on small */}
               <div className="flex flex-col gap-6 md:flex-row md:items-start">
@@ -316,6 +339,38 @@ export default function AnalyzerPage() {
           jdRef.current?.focus();
         }}
       />
+
+      {/* Confirm before aborting an in-flight scan */}
+      {confirmStop && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-ink-900/50 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="stop-title"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-card">
+            <h3 id="stop-title" className="text-xl font-extrabold text-ink-900">
+              Stop and edit?
+            </h3>
+            <p className="mt-3 text-sm leading-relaxed text-ink-700">
+              This cancels the scan that&apos;s running now. You&apos;ll lose this in-progress score
+              and can upload a different résumé or change the job description before scoring again.
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button type="button" className="btn-ghost" onClick={() => setConfirmStop(false)}>
+                Keep scanning
+              </button>
+              <button
+                type="button"
+                onClick={stopAndEdit}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 font-semibold text-white transition hover:bg-red-700"
+              >
+                Stop &amp; edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

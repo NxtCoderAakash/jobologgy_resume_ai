@@ -8,6 +8,7 @@ export async function scoreResume(args: {
   file?: File | null;
   resumeText?: string;
   token: string;
+  signal?: AbortSignal;
 }): Promise<AnalyzerResult> {
   const form = new FormData();
   form.append("jobDescription", args.jobDescription);
@@ -18,6 +19,7 @@ export async function scoreResume(args: {
     method: "POST",
     headers: { Authorization: `Bearer ${args.token}` },
     body: form,
+    signal: args.signal,
   });
 
   if (!res.ok) {

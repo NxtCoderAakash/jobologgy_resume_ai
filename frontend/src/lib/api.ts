@@ -19,6 +19,8 @@ export interface AnalyzeArgs {
   cvStyle?: "standard" | "creative";
   /** Profile photo (resized base64 data URL) for the "creative" style. */
   photoDataUrl?: string | null;
+  /** Abort signal so the caller can cancel an in-flight optimize. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -44,6 +46,7 @@ export async function analyzeResume(args: AnalyzeArgs): Promise<AnalyzeResult> {
     method: "POST",
     headers: { Authorization: `Bearer ${args.token}` },
     body: form,
+    signal: args.signal,
   });
 
   if (!res.ok) {

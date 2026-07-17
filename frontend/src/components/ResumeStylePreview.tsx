@@ -33,14 +33,33 @@ export default function ResumeStylePreview({
           className="flex items-center gap-2 px-3 py-2.5"
           style={{ background: "linear-gradient(135deg,#7c3aed,#d946ef,#f472b6)" }}
         >
-          {/* photo placeholder — signals "your photo goes here" */}
-          <div className="relative grid h-9 w-9 place-items-center overflow-hidden rounded-full border border-white/80 bg-white/25 text-white">
-            <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
-              <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.4 0-8 2.7-8 6v2h16v-2c0-3.3-3.6-6-8-6Z" />
+          {/* photo placeholder — a friendly cartoon avatar signalling "your photo goes here" */}
+          <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/80">
+            <svg viewBox="0 0 48 48" className="h-full w-full" aria-hidden>
+              <circle cx="24" cy="24" r="24" fill="#eef2ff" />
+              {/* shoulders / shirt */}
+              <path d="M6 47c0-9 8-14 18-14s18 5 18 14z" fill="#a78bfa" />
+              {/* neck */}
+              <rect x="20.5" y="27" width="7" height="7" rx="2.5" fill="#f0b48a" />
+              {/* head */}
+              <circle cx="24" cy="19" r="10.5" fill="#f8c9a4" />
+              {/* hair */}
+              <path
+                d="M13.5 19c0-8 5.5-12 10.5-12s10.5 4 10.5 12c-2-4-5-5.5-10.5-5.5S15.5 15 13.5 19z"
+                fill="#4b3a2f"
+              />
+              {/* eyes */}
+              <circle cx="20" cy="19" r="1.3" fill="#3a2a1a" />
+              <circle cx="28" cy="19" r="1.3" fill="#3a2a1a" />
+              {/* smile */}
+              <path
+                d="M19.5 23c1.9 2.4 7.1 2.4 9 0"
+                stroke="#c56a4e"
+                strokeWidth="1.3"
+                fill="none"
+                strokeLinecap="round"
+              />
             </svg>
-            <span className="absolute -bottom-[1px] rounded-sm bg-black/35 px-[2px] text-[4px] font-semibold leading-[6px] text-white">
-              PHOTO
-            </span>
           </div>
           <div className="min-w-0">
             <div className="text-[11px] font-extrabold leading-tight text-white">Jordan Blake</div>

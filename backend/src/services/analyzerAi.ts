@@ -111,9 +111,18 @@ export async function scoreResume(params: {
   resumeText: string;
   jobDescription: string;
 }): Promise<AnalyzerResult> {
+  // General-scan mode: no JD — score against the market-standard profile for the
+  // candidate's own (inferred) role instead of a specific posting.
+  const jdBlock = params.jobDescription.trim()
+    ? `JOB DESCRIPTION:\n"""\n${params.jobDescription}\n"""`
+    : `NO JOB DESCRIPTION PROVIDED — GENERAL SCAN. Infer the candidate's current/target role ` +
+      `from the résumé itself, and score against the market-standard job profile for that ` +
+      `role: the skills, keywords, and expectations employers typically list for it. Use ` +
+      `those market-standard keywords everywhere the schema refers to JD keywords. The same ` +
+      `scoring calibration applies unchanged.`;
   return generateStructuredJson({
     systemPrompt: SYSTEM_PROMPT,
-    userPrompt: `RÉSUMÉ:\n"""\n${params.resumeText}\n"""\n\nJOB DESCRIPTION:\n"""\n${params.jobDescription}\n"""`,
+    userPrompt: `RÉSUMÉ:\n"""\n${params.resumeText}\n"""\n\n${jdBlock}`,
     responseSchema,
     zodSchema: analyzerResultSchema,
     // Low temperature: scoring should be near-deterministic so the same résumé+JD

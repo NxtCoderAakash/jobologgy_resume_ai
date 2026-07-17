@@ -33,3 +33,29 @@ body {
     @apply mb-1.5 block text-sm font-semibold text-ink-700;
   }
 }
+
+/* ---- résumé "scanner" animation (ScanningPreview) ---- */
+@keyframes scan-beam {
+  0% {
+    top: -12%;
+  }
+  100% {
+    top: 104%;
+  }
+}
+.scan-beam {
+  animation: scan-beam 2.4s ease-in-out infinite;
+}
+
+@keyframes scan-shimmer {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.scan-shimmer {
+  animation: scan-shimmer 1.6s ease-in-out infinite;
+}

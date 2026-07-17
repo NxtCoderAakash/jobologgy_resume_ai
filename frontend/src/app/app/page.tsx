@@ -12,6 +12,8 @@ import NavBar from "@/components/NavBar";
 import FileDropzone from "@/components/FileDropzone";
 import AnalysisReport from "@/components/AnalysisReport";
 import LoadingProgress from "@/components/LoadingProgress";
+import ScanningPreview from "@/components/ScanningPreview";
+import NoJdDialog from "@/components/NoJdDialog";
 
 const OPTIMIZING_MESSAGES = [
   "Reading your résumé…",
@@ -66,6 +68,11 @@ export default function WorkspacePage() {
 
   // Scroll the results into view the moment they're revealed.
   const resultRef = useRef<HTMLDivElement>(null);
+  const jdRef = useRef<HTMLTextAreaElement>(null);
+
+  // No-JD "general scan" consent flow.
+  const [showNoJd, setShowNoJd] = useState(false);
+  const [lastRunGeneral, setLastRunGeneral] = useState(false);
 
   // Route guard.
   useEffect(() => {
@@ -137,10 +144,6 @@ export default function WorkspacePage() {
     setError(null);
     setResult(null);
 
-    if (jobDescription.trim().length < 20) {
-      setError("Please paste a job description (at least a few sentences).");
-      return;
-    }
     if (!usePaste && !file) {
       setError("Upload a résumé file, or switch to pasting text.");
       return;
@@ -149,10 +152,23 @@ export default function WorkspacePage() {
       setError("Please paste your résumé text.");
       return;
     }
+    const jd = jobDescription.trim();
+    if (jd.length === 0) {
+      // No JD: ask consent for a general market-standard scan first.
+      setShowNoJd(true);
+      return;
+    }
+    if (jd.length < 20) {
+      setError("Please paste a job description (at least a few sentences).");
+      return;
+    }
 
-    // Always open the pre-optimize dialog: it shows which ATS systems we'll
-    // target and — if the JD wants skills this résumé doesn't show — asks which
-    // the user genuinely has (never inventing them silently).
+    openPreOptimizeDialog();
+  }
+
+  /** The pre-optimize dialog: ATS targeting + (if known) missing-JD-skills confirmation. */
+  function openPreOptimizeDialog() {
+    setShowNoJd(false);
     setOfferedSkills(missingSkillsToOffer());
     setCheckedSkills({});
     setExtraSkills("");
@@ -162,6 +178,7 @@ export default function WorkspacePage() {
   /** Fire the optimize request with the chosen ATS targets and confirmed skills. */
   async function runOptimize(confirmedSkills: string[]) {
     setShowSkillDialog(false);
+    setLastRunGeneral(jobDescription.trim().length === 0);
     setBusy(true);
     try {
       const { data } = await supabase.auth.getSession();
@@ -249,10 +266,14 @@ export default function WorkspacePage() {
 
           {/* Job description */}
           <div className="card">
-            <h2 className="mb-3 text-lg font-bold text-ink-900">Job description</h2>
+            <h2 className="mb-3 text-lg font-bold text-ink-900">
+              Job description{" "}
+              <span className="text-sm font-medium text-ink-500">(optional)</span>
+            </h2>
             <textarea
+              ref={jdRef}
               className="input min-h-[220px] resize-y"
-              placeholder="Paste the full job description you're applying to…"
+              placeholder="Paste the full job description you're applying to… or leave empty for a general market-standard scan."
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
             />
@@ -279,9 +300,17 @@ export default function WorkspacePage() {
             </button>
 
             {busy && (
-              <div className="mt-6">
+              <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                <ScanningPreview
+                  file={usePaste ? null : file}
+                  resumeText={usePaste ? resumeText : undefined}
+                />
                 <LoadingProgress
-                  title="Building your optimized résumé…"
+                  title={
+                    lastRunGeneral
+                      ? "Optimizing against market standards…"
+                      : "Building your optimized résumé…"
+                  }
                   expectedSeconds={25}
                   messages={OPTIMIZING_MESSAGES}
                   done={!!pending}
@@ -304,6 +333,15 @@ export default function WorkspacePage() {
           </div>
         )}
       </div>
+
+      <NoJdDialog
+        open={showNoJd}
+        onProceed={openPreOptimizeDialog}
+        onAddJd={() => {
+          setShowNoJd(false);
+          jdRef.current?.focus();
+        }}
+      />
 
       {showSkillDialog && (
         <div
@@ -398,7 +436,9 @@ export default function WorkspacePage() {
             {offeredSkills.length > 0 && (
               <div className="mt-6 border-t border-gray-100 pt-5">
                 <p className="text-sm font-semibold text-ink-700">
-                  Skills the job asks for that your résumé doesn’t show
+                  {jobDescription.trim()
+                    ? "Skills the job asks for that your résumé doesn’t show"
+                    : "Market-standard skills for your role that your résumé doesn’t show"}
                 </p>
                 <p className="mt-1 text-xs text-ink-500">
                   Tick any you genuinely have — we’ll weave them in. We won’t add skills you don’t

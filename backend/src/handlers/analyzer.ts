@@ -17,7 +17,9 @@ export async function handleAnalyzerScore(
   const { fields, file } = await parseMultipart(req);
 
   const jobDescription = (fields.jobDescription || "").trim();
-  if (jobDescription.length < 20) {
+  // Empty JD = consented "general scan" (market-standard profile for the candidate's
+  // role). Short-but-nonempty is still rejected as a likely typo.
+  if (jobDescription.length > 0 && jobDescription.length < 20) {
     throw new HttpError(400, "Paste the job description you want to score against.");
   }
   if (!file && !(fields.resumeText || "").trim()) {

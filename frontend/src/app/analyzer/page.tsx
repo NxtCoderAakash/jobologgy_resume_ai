@@ -16,6 +16,8 @@ import NavBar from "@/components/NavBar";
 import FileDropzone from "@/components/FileDropzone";
 import AnalyzerReport from "@/components/AnalyzerReport";
 import LoadingProgress from "@/components/LoadingProgress";
+import ScanningPreview from "@/components/ScanningPreview";
+import NoJdDialog from "@/components/NoJdDialog";
 
 const SCORING_MESSAGES = [
   "Reading your résumé…",
@@ -44,6 +46,11 @@ export default function AnalyzerPage() {
   const [pending, setPending] = useState<AnalyzerResult | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
+  const jdRef = useRef<HTMLTextAreaElement>(null);
+
+  // No-JD "general scan" consent flow.
+  const [showNoJd, setShowNoJd] = useState(false);
+  const [lastRunGeneral, setLastRunGeneral] = useState(false);
 
   // Route guard.
   useEffect(() => {
@@ -66,10 +73,6 @@ export default function AnalyzerPage() {
     setError(null);
     setResult(null);
 
-    if (jobDescription.trim().length < 20) {
-      setError("Please paste a job description (at least a few sentences).");
-      return;
-    }
     if (!usePaste && !file) {
       setError("Upload a résumé file, or switch to pasting text.");
       return;
@@ -78,7 +81,24 @@ export default function AnalyzerPage() {
       setError("Please paste your résumé text.");
       return;
     }
+    const jd = jobDescription.trim();
+    if (jd.length === 0) {
+      // No JD: ask consent for a general market-standard scan instead.
+      setShowNoJd(true);
+      return;
+    }
+    if (jd.length < 20) {
+      setError("Please paste a job description (at least a few sentences).");
+      return;
+    }
 
+    await runScore();
+  }
+
+  /** Fire the score request (empty JD = consented general scan). */
+  async function runScore() {
+    setShowNoJd(false);
+    setLastRunGeneral(jobDescription.trim().length === 0);
     setBusy(true);
     try {
       const { data } = await supabase.auth.getSession();
@@ -145,10 +165,14 @@ export default function AnalyzerPage() {
           </div>
 
           <div className="card">
-            <h2 className="mb-3 text-lg font-bold text-ink-900">Job description</h2>
+            <h2 className="mb-3 text-lg font-bold text-ink-900">
+              Job description{" "}
+              <span className="text-sm font-medium text-ink-500">(optional)</span>
+            </h2>
             <textarea
+              ref={jdRef}
               className="input min-h-[220px] resize-y"
-              placeholder="Paste the full job description you're targeting…"
+              placeholder="Paste the full job description you're targeting… or leave empty for a general market-standard scan."
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
             />
@@ -173,9 +197,17 @@ export default function AnalyzerPage() {
             </button>
 
             {busy && (
-              <div ref={loadingRef} className="mt-6 scroll-mt-24">
+              <div ref={loadingRef} className="mt-6 grid gap-6 scroll-mt-24 lg:grid-cols-2">
+                <ScanningPreview
+                  file={usePaste ? null : file}
+                  resumeText={usePaste ? resumeText : undefined}
+                />
                 <LoadingProgress
-                  title="Scoring your résumé against the job…"
+                  title={
+                    lastRunGeneral
+                      ? "Scoring your résumé against market standards…"
+                      : "Scoring your résumé against the job…"
+                  }
                   expectedSeconds={15}
                   messages={SCORING_MESSAGES}
                   done={!!pending}
@@ -194,7 +226,7 @@ export default function AnalyzerPage() {
         {result && (
           <div ref={resultRef} className="mt-12 scroll-mt-24">
             <h2 className="mb-4 text-2xl font-extrabold text-ink-900">Your score</h2>
-            <AnalyzerReport result={result} />
+            <AnalyzerReport result={result} generalScan={lastRunGeneral} />
 
             {/* Hand-off to the makers */}
             <div className="card mt-6 flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
@@ -228,6 +260,15 @@ export default function AnalyzerPage() {
           </div>
         )}
       </div>
+
+      <NoJdDialog
+        open={showNoJd}
+        onProceed={runScore}
+        onAddJd={() => {
+          setShowNoJd(false);
+          jdRef.current?.focus();
+        }}
+      />
     </main>
   );
 }

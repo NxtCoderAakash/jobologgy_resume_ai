@@ -47,7 +47,11 @@ export interface AnalyzeInput {
 
 export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult> {
   const jobDescription = (input.jobDescription || "").trim();
-  if (jobDescription.length < 20) {
+  // Empty JD = deliberate "general scan" (user consented in the UI): the résumé is
+  // evaluated against the market-standard profile for the candidate's own role.
+  // A short-but-nonempty JD is still rejected — that's almost always a typo.
+  const generalScan = jobDescription.length === 0;
+  if (!generalScan && jobDescription.length < 20) {
     throw new HttpError(400, "Please provide a job description (at least a few sentences).");
   }
 
@@ -117,6 +121,12 @@ export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult>
   if (input.atsSystems?.length) {
     analysis.summaryOfChanges +=
       `\n\nOptimized for compatibility with these ATS systems: ${input.atsSystems.join(", ")}.`;
+  }
+
+  if (generalScan) {
+    analysis.summaryOfChanges +=
+      `\n\nNo job description was provided, so this résumé was scored against the ` +
+      `market-standard job profile for your current role and commonly expected keywords.`;
   }
 
   // 7. Render both PDFs (in parallel)

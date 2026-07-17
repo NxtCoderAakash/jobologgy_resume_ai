@@ -12,6 +12,8 @@ node_modules/
 frontend/.next/
 frontend/out/
 backend/dist/
+# copied from node_modules by frontend/scripts/copy-pdf-worker.js (pre-dev/build hook)
+frontend/public/pdf.worker.min.mjs
 
 # misc
 .DS_Store

@@ -204,7 +204,16 @@ export async function analyzeAndRewrite(params: {
         `parseable by these applicant tracking systems — standard section headings, single ` +
         `column, plain text, no tables/columns/graphics. Do NOT fabricate anything to fit them.`
       : "";
-  const userPrompt = `ORIGINAL RÉSUMÉ:\n"""\n${params.resumeText}\n"""\n\nJOB DESCRIPTION:\n"""\n${params.jobDescription}\n"""${atsLine}`;
+  // General-scan mode: no JD supplied — evaluate against the market-standard
+  // profile for the candidate's own role instead of a specific job posting.
+  const jdBlock = params.jobDescription.trim()
+    ? `JOB DESCRIPTION:\n"""\n${params.jobDescription}\n"""`
+    : `NO JOB DESCRIPTION PROVIDED — GENERAL SCAN. Infer the candidate's current/target role ` +
+      `from the résumé itself. Then act as if the "JD" were the market-standard job profile ` +
+      `for that role: the skills, keywords, and expectations employers typically list for it. ` +
+      `Use those market-standard keywords everywhere the schema refers to JD keywords. All ` +
+      `HARD RULES still apply — never fabricate skills or metrics to fit the standard profile.`;
+  const userPrompt = `ORIGINAL RÉSUMÉ:\n"""\n${params.resumeText}\n"""\n\n${jdBlock}${atsLine}`;
 
   // Up to 3 attempts: retries transient overload (503) and parse/validation failures.
   let lastErr: unknown;

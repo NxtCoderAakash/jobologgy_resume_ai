@@ -80,10 +80,23 @@ function BulletCard({
   );
 }
 
-export default function AnalyzerReport({ result }: { result: AnalyzerResult }) {
+export default function AnalyzerReport({
+  result,
+  generalScan = false,
+}: {
+  result: AnalyzerResult;
+  /** True when scored without a JD, against the market-standard profile. */
+  generalScan?: boolean;
+}) {
   const b = result.scoreBreakdown;
   return (
     <div className="space-y-6">
+      {generalScan && (
+        <p className="rounded-lg bg-brand-50 px-4 py-2.5 text-sm font-medium text-brand-700">
+          ℹ No job description was provided — this résumé was scored against the
+          market-standard job profile for your current role.
+        </p>
+      )}
       {/* Overall score + verdict */}
       <div className="card">
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center">
@@ -116,7 +129,9 @@ export default function AnalyzerReport({ result }: { result: AnalyzerResult }) {
         <div className="mt-5 space-y-5">
           <div>
             <h3 className="mb-2 text-sm font-semibold text-emerald-700">
-              ✓ Matched from the job description
+              {generalScan
+                ? "✓ Matched market-standard keywords"
+                : "✓ Matched from the job description"}
             </h3>
             <Chips items={result.keywordAnalysis.matched} tone="matched" />
           </div>

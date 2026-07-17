@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-pdf-worker.js",
     "dev": "next dev",
+    "prebuild": "node scripts/copy-pdf-worker.js",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -11,6 +13,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
     "next": "^14.2.35",
+    "pdfjs-dist": "^5.4.624",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

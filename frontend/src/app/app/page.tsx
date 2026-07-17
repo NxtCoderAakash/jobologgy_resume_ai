@@ -52,8 +52,10 @@ export default function WorkspacePage() {
     priorScore: AnalyzerResult | null;
   } | null>(null);
 
-  // Pre-optimize dialog state (ATS targeting + optional JD skills).
+  // Pre-optimize dialog state (ATS targeting + optional JD skills), shown as a
+  // two-step wizard so each screen asks exactly one question.
   const [showSkillDialog, setShowSkillDialog] = useState(false);
+  const [dialogStep, setDialogStep] = useState<1 | 2>(1);
   const [offeredSkills, setOfferedSkills] = useState<string[]>([]);
   const [checkedSkills, setCheckedSkills] = useState<Record<string, boolean>>({});
   const [extraSkills, setExtraSkills] = useState("");
@@ -166,12 +168,13 @@ export default function WorkspacePage() {
     openPreOptimizeDialog();
   }
 
-  /** The pre-optimize dialog: ATS targeting + (if known) missing-JD-skills confirmation. */
+  /** The pre-optimize wizard: step 1 = ATS targeting, step 2 = skills confirmation. */
   function openPreOptimizeDialog() {
     setShowNoJd(false);
     setOfferedSkills(missingSkillsToOffer());
     setCheckedSkills({});
     setExtraSkills("");
+    setDialogStep(1);
     setShowSkillDialog(true);
   }
 
@@ -351,10 +354,19 @@ export default function WorkspacePage() {
           aria-labelledby="opt-dialog-title"
         >
           <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-card">
-            <h3 id="opt-dialog-title" className="text-xl font-extrabold text-ink-900">
-              Before we optimize
-            </h3>
+            <div className="flex items-center justify-between gap-3">
+              <h3 id="opt-dialog-title" className="text-xl font-extrabold text-ink-900">
+                {dialogStep === 1 ? "Choose your ATS systems" : "Add skills you have"}
+              </h3>
+              {offeredSkills.length > 0 && (
+                <span className="shrink-0 rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">
+                  Step {dialogStep} of 2
+                </span>
+              )}
+            </div>
 
+            {dialogStep === 1 && (
+              <>
             {/* ATS targeting */}
             <p className="mt-3 text-sm font-semibold text-ink-700">
               Optimizing for compatibility with these ATS systems
@@ -431,10 +443,12 @@ export default function WorkspacePage() {
                 Add
               </button>
             </div>
+              </>
+            )}
 
-            {/* JD skills (only when the résumé is missing some) */}
-            {offeredSkills.length > 0 && (
-              <div className="mt-6 border-t border-gray-100 pt-5">
+            {/* Step 2 — JD skills (only when the résumé is missing some) */}
+            {dialogStep === 2 && offeredSkills.length > 0 && (
+              <div className="mt-4">
                 <p className="text-sm font-semibold text-ink-700">
                   {jobDescription.trim()
                     ? "Skills the job asks for that your résumé doesn’t show"
@@ -475,16 +489,43 @@ export default function WorkspacePage() {
             )}
 
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                className="btn-ghost"
-                onClick={() => setShowSkillDialog(false)}
-              >
-                Cancel
-              </button>
-              <button type="button" className="btn-primary" onClick={confirmSkillsAndOptimize}>
-                Optimize my résumé →
-              </button>
+              {dialogStep === 1 ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => setShowSkillDialog(false)}
+                  >
+                    Cancel
+                  </button>
+                  {offeredSkills.length > 0 ? (
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={() => setDialogStep(2)}
+                    >
+                      Next: add skills →
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={confirmSkillsAndOptimize}
+                    >
+                      Optimize my résumé →
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <button type="button" className="btn-ghost" onClick={() => setDialogStep(1)}>
+                    ← Back
+                  </button>
+                  <button type="button" className="btn-primary" onClick={confirmSkillsAndOptimize}>
+                    Optimize my résumé →
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

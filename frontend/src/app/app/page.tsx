@@ -474,8 +474,8 @@ export default function WorkspacePage() {
                     {
                       key: "creative",
                       title: "Colourful + photo",
-                      atsTag: "Not ATS-friendly",
-                      tagClass: "bg-amber-100 text-amber-700",
+                      atsTag: "Best for humans",
+                      tagClass: "bg-fuchsia-100 text-fuchsia-700",
                       desc: "A bold, modern design with your photo. Great for portfolios, networking, or emailing directly to a person.",
                     },
                   ] as const

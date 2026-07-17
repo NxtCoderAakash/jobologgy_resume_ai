@@ -29,7 +29,9 @@ export function parseMultipart(req: IncomingMessage): Promise<ParsedForm> {
 
     const busboy = Busboy({
       headers: req.headers,
-      limits: { fileSize: MAX_FILE_BYTES, files: 1 },
+      // fieldSize is generous so a base64 profile-photo data URL sent as a field
+      // isn't silently truncated (photos are resized client-side, ~<200 KB).
+      limits: { fileSize: MAX_FILE_BYTES, files: 1, fieldSize: 8 * 1024 * 1024 },
     });
 
     const fields: Record<string, string> = {};

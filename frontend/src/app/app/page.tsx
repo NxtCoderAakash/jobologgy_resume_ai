@@ -15,6 +15,31 @@ import LoadingProgress from "@/components/LoadingProgress";
 import ScanningPreview from "@/components/ScanningPreview";
 import NoJdDialog from "@/components/NoJdDialog";
 
+/** Read an image file and downscale it to a small square-ish JPEG data URL. */
+async function readResizedPhoto(file: File): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result as string);
+    fr.onerror = () => reject(new Error("read failed"));
+    fr.readAsDataURL(file);
+  });
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error("decode failed"));
+    im.src = dataUrl;
+  });
+  const MAX = 400;
+  const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext("2d")?.drawImage(img, 0, 0, w, h);
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
+
 const OPTIMIZING_MESSAGES = [
   "Reading your résumé…",
   "Extracting the job's key requirements…",
@@ -52,13 +77,17 @@ export default function WorkspacePage() {
     priorScore: AnalyzerResult | null;
   } | null>(null);
 
-  // Pre-optimize dialog state (ATS targeting + optional JD skills), shown as a
-  // two-step wizard so each screen asks exactly one question.
+  // Pre-optimize wizard state (style → ATS targeting → optional JD skills), so
+  // each screen asks exactly one question.
   const [showSkillDialog, setShowSkillDialog] = useState(false);
-  const [dialogStep, setDialogStep] = useState<1 | 2>(1);
+  const [dialogStep, setDialogStep] = useState<1 | 2 | 3>(1);
   const [offeredSkills, setOfferedSkills] = useState<string[]>([]);
   const [checkedSkills, setCheckedSkills] = useState<Record<string, boolean>>({});
   const [extraSkills, setExtraSkills] = useState("");
+
+  // Step 1 — résumé visual style + optional photo (for the "creative" style).
+  const [cvStyle, setCvStyle] = useState<"standard" | "creative">("standard");
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
 
   // ATS systems the résumé is optimized against.
   const [atsChecked, setAtsChecked] = useState<Record<string, boolean>>(() =>
@@ -201,12 +230,25 @@ export default function WorkspacePage() {
         priorBeforeScore: reusablePriorScore(),
         confirmedSkills,
         atsSystems: selectedAtsNames(),
+        cvStyle,
+        photoDataUrl: cvStyle === "creative" ? photoDataUrl : null,
       });
       // Don't reveal yet — let the loader complete to 100% first.
       setPending(res);
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
+    }
+  }
+
+  /** Read + downscale the chosen profile photo into a data URL for the creative style. */
+  async function onPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    try {
+      setPhotoDataUrl(await readResizedPhoto(f));
+    } catch {
+      setError("Couldn't read that image — try a different photo.");
     }
   }
 
@@ -401,18 +443,109 @@ export default function WorkspacePage() {
           <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-card">
             <div className="flex items-center justify-between gap-3">
               <h3 id="opt-dialog-title" className="text-xl font-extrabold text-ink-900">
-                {dialogStep === 1 ? "Choose your ATS systems" : "Add skills you have"}
+                {dialogStep === 1
+                  ? "Choose your résumé style"
+                  : dialogStep === 2
+                    ? "Choose your ATS systems"
+                    : "Add skills you have"}
               </h3>
-              {offeredSkills.length > 0 && (
-                <span className="shrink-0 rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">
-                  Step {dialogStep} of 2
-                </span>
-              )}
+              <span className="shrink-0 rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">
+                Step {dialogStep} of {offeredSkills.length > 0 ? 3 : 2}
+              </span>
             </div>
 
+            {/* Step 1 — résumé visual style */}
             {dialogStep === 1 && (
+              <div className="mt-4 space-y-3">
+                {(
+                  [
+                    {
+                      key: "standard",
+                      title: "Standard (ATS-safe)",
+                      desc: "Clean single-column layout that parses reliably in applicant tracking systems. Best for online job applications.",
+                    },
+                    {
+                      key: "creative",
+                      title: "Colourful + photo",
+                      desc: "A bold, modern design with your photo. Great for portfolios, networking, or emailing directly to a person.",
+                    },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    type="button"
+                    key={opt.key}
+                    onClick={() => setCvStyle(opt.key)}
+                    className={`w-full rounded-xl border-2 px-4 py-3 text-left transition ${
+                      cvStyle === opt.key
+                        ? "border-brand-600 bg-brand-50"
+                        : "border-gray-200 hover:border-brand-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`grid h-4 w-4 place-items-center rounded-full border-2 ${
+                          cvStyle === opt.key ? "border-brand-600" : "border-gray-300"
+                        }`}
+                      >
+                        {cvStyle === opt.key && (
+                          <span className="h-2 w-2 rounded-full bg-brand-600" />
+                        )}
+                      </span>
+                      <span className="font-semibold text-ink-900">{opt.title}</span>
+                    </div>
+                    <p className="mt-1 pl-6 text-xs text-ink-500">{opt.desc}</p>
+                  </button>
+                ))}
+
+                {cvStyle === "creative" && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-xs text-amber-800">
+                      ⚠ Heads up: colourful résumés with a photo look great to people, but many ATS
+                      systems parse them poorly. For online job-board applications, the standard
+                      style is safer.
+                    </p>
+                    <div className="mt-3">
+                      <span className="text-sm font-semibold text-ink-700">
+                        Your photo <span className="font-normal text-ink-500">(optional)</span>
+                      </span>
+                      <div className="mt-2 flex items-center gap-3">
+                        {photoDataUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={photoDataUrl}
+                            alt="Your photo"
+                            className="h-14 w-14 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="grid h-14 w-14 place-items-center rounded-full bg-brand-100 text-lg">
+                            📷
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={onPhotoChange}
+                          className="text-sm text-ink-700"
+                        />
+                        {photoDataUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setPhotoDataUrl(null)}
+                            className="text-sm font-medium text-ink-500 hover:text-red-600"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 2 — ATS targeting */}
+            {dialogStep === 2 && (
               <>
-            {/* ATS targeting */}
             <p className="mt-3 text-sm font-semibold text-ink-700">
               Optimizing for compatibility with these ATS systems
             </p>
@@ -491,8 +624,8 @@ export default function WorkspacePage() {
               </>
             )}
 
-            {/* Step 2 — JD skills (only when the résumé is missing some) */}
-            {dialogStep === 2 && offeredSkills.length > 0 && (
+            {/* Step 3 — JD skills (only when the résumé is missing some) */}
+            {dialogStep === 3 && offeredSkills.length > 0 && (
               <div className="mt-4">
                 <p className="text-sm font-semibold text-ink-700">
                   {jobDescription.trim()
@@ -534,7 +667,7 @@ export default function WorkspacePage() {
             )}
 
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              {dialogStep === 1 ? (
+              {dialogStep === 1 && (
                 <>
                   <button
                     type="button"
@@ -543,12 +676,18 @@ export default function WorkspacePage() {
                   >
                     Cancel
                   </button>
+                  <button type="button" className="btn-primary" onClick={() => setDialogStep(2)}>
+                    Next: ATS systems →
+                  </button>
+                </>
+              )}
+              {dialogStep === 2 && (
+                <>
+                  <button type="button" className="btn-ghost" onClick={() => setDialogStep(1)}>
+                    ← Back
+                  </button>
                   {offeredSkills.length > 0 ? (
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      onClick={() => setDialogStep(2)}
-                    >
+                    <button type="button" className="btn-primary" onClick={() => setDialogStep(3)}>
                       Next: add skills →
                     </button>
                   ) : (
@@ -561,9 +700,10 @@ export default function WorkspacePage() {
                     </button>
                   )}
                 </>
-              ) : (
+              )}
+              {dialogStep === 3 && (
                 <>
-                  <button type="button" className="btn-ghost" onClick={() => setDialogStep(1)}>
+                  <button type="button" className="btn-ghost" onClick={() => setDialogStep(2)}>
                     ← Back
                   </button>
                   <button type="button" className="btn-primary" onClick={confirmSkillsAndOptimize}>

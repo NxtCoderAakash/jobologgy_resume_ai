@@ -22,6 +22,13 @@ function parsePriorBefore(raw: string | undefined): AnalyzerResult | undefined {
   }
 }
 
+/** Accept a profile-photo data URL only if it's a real base64 image (and not huge). */
+function parsePhotoDataUrl(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  if (raw.length > 8_000_000) return undefined; // ~6 MB decoded ceiling
+  return /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(raw) ? raw : undefined;
+}
+
 /** Parse a JSON array-of-strings field (confirmed skills / ATS systems); ignore malformed input. */
 function parseStringList(raw: string | undefined): string[] | undefined {
   if (!raw) return undefined;
@@ -58,6 +65,8 @@ export async function handleAnalyze(
     priorBefore: parsePriorBefore(fields.priorBeforeScore),
     confirmedSkills: parseStringList(fields.confirmedSkills),
     atsSystems: parseStringList(fields.atsSystems),
+    cvStyle: fields.cvStyle === "creative" ? "creative" : "standard",
+    photoDataUrl: parsePhotoDataUrl(fields.photoDataUrl),
   });
 
   sendJson(res, 200, result);

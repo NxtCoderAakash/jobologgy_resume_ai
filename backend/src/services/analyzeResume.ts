@@ -10,6 +10,7 @@ import { analyzeAndRewrite } from "./gemini.js";
 import { scoreResume } from "./analyzerAi.js";
 import { sanitizeRewrittenCv, composeCvText } from "./cvPostProcess.js";
 import { renderCvHtml } from "./pdf/cvTemplate.js";
+import { renderCreativeCvHtml } from "./pdf/creativeCvTemplate.js";
 import { renderReportHtml } from "./pdf/reportTemplate.js";
 import { htmlToPdf } from "./pdf/render.js";
 import { persistJob } from "./supabase.js";
@@ -43,6 +44,10 @@ export interface AnalyzeInput {
    * a light targeting hint in the rewrite prompt — not a vendor-specific parser.
    */
   atsSystems?: string[];
+  /** Which visual template to render the optimized CV with. */
+  cvStyle?: "standard" | "creative";
+  /** Optional profile photo (base64 data URL) for the "creative" style. */
+  photoDataUrl?: string;
 }
 
 export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult> {
@@ -129,9 +134,14 @@ export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult>
       `market-standard job profile for your current role and commonly expected keywords.`;
   }
 
-  // 7. Render both PDFs (in parallel)
+  // 7. Render both PDFs (in parallel). The CV uses the user's chosen style; the
+  //    diagnostic report is always the standard layout.
+  const cvHtml =
+    input.cvStyle === "creative"
+      ? renderCreativeCvHtml(analysis.rewrittenCV, input.photoDataUrl)
+      : renderCvHtml(analysis.rewrittenCV);
   const [cvPdf, reportPdf] = await Promise.all([
-    htmlToPdf(renderCvHtml(analysis.rewrittenCV)),
+    htmlToPdf(cvHtml),
     htmlToPdf(renderReportHtml(analysis)),
   ]);
 

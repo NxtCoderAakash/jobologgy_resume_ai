@@ -15,6 +15,10 @@ export interface AnalyzeArgs {
   confirmedSkills?: string[];
   /** ATS systems to optimize the résumé for compatibility with. */
   atsSystems?: string[];
+  /** Visual style for the generated CV PDF. */
+  cvStyle?: "standard" | "creative";
+  /** Profile photo (resized base64 data URL) for the "creative" style. */
+  photoDataUrl?: string | null;
 }
 
 /**
@@ -32,6 +36,9 @@ export async function analyzeResume(args: AnalyzeArgs): Promise<AnalyzeResult> {
     form.append("confirmedSkills", JSON.stringify(args.confirmedSkills));
   if (args.atsSystems && args.atsSystems.length)
     form.append("atsSystems", JSON.stringify(args.atsSystems));
+  if (args.cvStyle) form.append("cvStyle", args.cvStyle);
+  if (args.cvStyle === "creative" && args.photoDataUrl)
+    form.append("photoDataUrl", args.photoDataUrl);
 
   const res = await fetch(`${BACKEND_URL}/api/analyze`, {
     method: "POST",

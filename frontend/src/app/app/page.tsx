@@ -55,6 +55,9 @@ export default function WorkspacePage() {
   const [checkedSkills, setCheckedSkills] = useState<Record<string, boolean>>({});
   const [extraSkills, setExtraSkills] = useState("");
 
+  // Scroll the results into view the moment they're revealed.
+  const resultRef = useRef<HTMLDivElement>(null);
+
   // Route guard.
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -62,6 +65,11 @@ export default function WorkspacePage() {
       else setReady(true);
     });
   }, [router]);
+
+  // As soon as results land, scroll down to them (mirrors the Analyzer).
+  useEffect(() => {
+    if (result) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [result]);
 
   // Pre-fill when arriving from the Analyzer's "Optimize it" hand-off.
   useEffect(() => {
@@ -269,7 +277,7 @@ export default function WorkspacePage() {
         </form>
 
         {result && (
-          <div className="mt-12">
+          <div ref={resultRef} className="mt-12 scroll-mt-6">
             <h2 className="mb-4 text-2xl font-extrabold text-ink-900">Your results</h2>
             <AnalysisReport result={result} />
           </div>

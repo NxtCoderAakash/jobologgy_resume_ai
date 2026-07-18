@@ -4,10 +4,15 @@
  * Floating résumé/career coach — a chat bubble available on every page once the
  * user is logged in. Streams replies from POST /api/chat. Mobile-first and
  * overflow-safe per FRONTEND_GUIDELINES (R2/R5/R7).
+ *
+ * - History persists per user in localStorage (survives reload).
+ * - Context-aware: if a page (Studio/Optimizer/Analyzer) publishes the résumé
+ *   the user is working on, the coach can use it without pasting.
  */
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { streamChat, type ChatMessage } from "@/lib/chatApi";
+import { getChatContext, subscribeChatContext, type ChatContext } from "@/lib/chatContext";
 
 const GREETING =
   "Hi! I'm your résumé coach. Paste a résumé or a bullet point and I'll sharpen it, compare it to a job description, or help you prep for interviews. What are you working on?";
@@ -19,7 +24,13 @@ const SUGGESTIONS = [
   "Interview prep tips",
 ];
 
-type Msg = ChatMessage;
+/** A turn. `apiContent` (when set) is sent to the model instead of `content`,
+ *  letting us attach the user's résumé without showing the dump in the bubble. */
+interface Msg extends ChatMessage {
+  apiContent?: string;
+}
+
+const storageKey = (email: string) => `jobologgy.chat.${email}`;
 
 /** Bold **text** and keep line breaks (whitespace-pre-wrap on the container). */
 function renderRich(text: string) {
@@ -40,11 +51,17 @@ export default function ChatWidget() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  const [ctx, setCtx] = useState<ChatContext | null>(null);
+  const [attached, setAttached] = useState(true);
+
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const loadedRef = useRef(false);
+  const contextSentRef = useRef(false);
+  const prevLabelRef = useRef<string | null>(null);
 
-  // Only show the coach to logged-in users (Gemini-backed, like the rest of the app).
+  // Only show the coach to logged-in users.
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
@@ -53,17 +70,63 @@ export default function ChatWidget() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // Auto-scroll to the newest content as it streams in.
+  // Load persisted history once, when we learn who the user is.
+  useEffect(() => {
+    if (!email || loadedRef.current) return;
+    loadedRef.current = true;
+    try {
+      const raw = localStorage.getItem(storageKey(email));
+      if (raw) {
+        const parsed = JSON.parse(raw) as Msg[];
+        if (Array.isArray(parsed) && parsed.length) {
+          setMessages(parsed);
+          if (parsed.some((m) => m.role === "user" && m.apiContent && m.apiContent !== m.content)) {
+            contextSentRef.current = true;
+          }
+        }
+      }
+    } catch {
+      /* corrupt storage — start fresh */
+    }
+  }, [email]);
+
+  // Persist after each completed turn (not mid-stream).
+  useEffect(() => {
+    if (!email || busy) return;
+    try {
+      if (messages.some((m) => m.role === "user")) {
+        localStorage.setItem(storageKey(email), JSON.stringify(messages));
+      }
+    } catch {
+      /* quota/blocked — non-critical */
+    }
+  }, [messages, busy, email]);
+
+  // Subscribe to the "résumé I'm working on" context published by pages.
+  useEffect(() => {
+    const sync = () => {
+      const c = getChatContext();
+      setCtx(c);
+      if (c && c.label !== prevLabelRef.current) {
+        prevLabelRef.current = c.label;
+        setAttached(true);
+        contextSentRef.current = false;
+      }
+      if (!c) prevLabelRef.current = null;
+    };
+    sync();
+    return subscribeChatContext(sync);
+  }, []);
+
+  // Auto-scroll to the newest content as it streams.
   useEffect(() => {
     if (open && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, open]);
 
-  // Focus the input when the panel opens.
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
 
-  // Escape closes the panel.
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
@@ -86,13 +149,23 @@ export default function ChatWidget() {
     setInput("");
     setError("");
 
-    // Build the payload from the real turns (drop the display-only greeting).
-    const base: Msg[] = [...messages, { role: "user", content }];
-    const firstUser = base.findIndex((m) => m.role === "user");
-    const apiMessages = base.slice(firstUser).map(({ role, content }) => ({ role, content }));
+    // Attach the working résumé once per context (kept in history via apiContent).
+    let apiContent: string | undefined;
+    if (ctx && attached && !contextSentRef.current) {
+      apiContent =
+        `Here is the résumé I'm currently working on (${ctx.label}):\n"""\n` +
+        `${ctx.text.slice(0, 8000)}\n"""\n\n${content}`;
+      contextSentRef.current = true;
+    }
+    const userMsg: Msg = { role: "user", content, apiContent };
 
-    // Append the user turn + an empty assistant bubble to stream into.
-    setMessages((prev) => [...prev, { role: "user", content }, { role: "assistant", content: "" }]);
+    const base: Msg[] = [...messages, userMsg];
+    const firstUser = base.findIndex((m) => m.role === "user");
+    const apiMessages = base
+      .slice(firstUser)
+      .map((m) => ({ role: m.role, content: m.apiContent ?? m.content }));
+
+    setMessages((prev) => [...prev, userMsg, { role: "assistant", content: "" }]);
     setBusy(true);
     const controller = new AbortController();
     abortRef.current = controller;
@@ -114,9 +187,7 @@ export default function ChatWidget() {
           }),
       });
     } catch (err) {
-      if ((err as Error).name === "AbortError") {
-        // User stopped it — keep whatever streamed so far.
-      } else {
+      if ((err as Error).name !== "AbortError") {
         const msg = (err as Error).message || "Something went wrong.";
         setError(msg);
         setMessages((prev) => {
@@ -138,6 +209,19 @@ export default function ChatWidget() {
     abortRef.current?.abort();
   }
 
+  function clearChat() {
+    abortRef.current?.abort();
+    setMessages([{ role: "assistant", content: GREETING }]);
+    setError("");
+    contextSentRef.current = false;
+    if (ctx) setAttached(true);
+    try {
+      if (email) localStorage.removeItem(storageKey(email));
+    } catch {
+      /* ignore */
+    }
+  }
+
   function onInputKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -148,6 +232,7 @@ export default function ChatWidget() {
   if (!email) return null;
 
   const showSuggestions = messages.filter((m) => m.role === "user").length === 0;
+  const hasHistory = messages.some((m) => m.role === "user");
 
   return (
     <>
@@ -177,17 +262,33 @@ export default function ChatWidget() {
               <p className="truncate text-sm font-bold">Résumé Coach</p>
               <p className="truncate text-xs text-brand-100">AI career &amp; résumé help</p>
             </div>
-            <button
-              type="button"
-              aria-label="Close chat"
-              onClick={() => setOpen(false)}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white/90 transition hover:bg-white/15"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-                <line x1="6" y1="6" x2="18" y2="18" />
-                <line x1="18" y1="6" x2="6" y2="18" />
-              </svg>
-            </button>
+            <div className="flex shrink-0 items-center gap-1">
+              {hasHistory && (
+                <button
+                  type="button"
+                  aria-label="Clear chat"
+                  title="Clear chat"
+                  onClick={clearChat}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-white/90 transition hover:bg-white/15"
+                >
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                </button>
+              )}
+              <button
+                type="button"
+                aria-label="Close chat"
+                onClick={() => setOpen(false)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-white/90 transition hover:bg-white/15"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -236,6 +337,29 @@ export default function ChatWidget() {
 
           {/* Composer */}
           <div className="border-t border-slate-200 bg-white p-2.5">
+            {ctx &&
+              (attached ? (
+                <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-brand-50 px-2.5 py-1.5 text-xs text-brand-700">
+                  <span className="min-w-0 flex-1 truncate">📎 Using {ctx.label}</span>
+                  <button
+                    type="button"
+                    aria-label="Don't use my résumé as context"
+                    onClick={() => setAttached(false)}
+                    className="shrink-0 rounded p-0.5 font-bold hover:bg-brand-100"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAttached(true)}
+                  className="mb-2 inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-ink-700 transition hover:bg-slate-50"
+                >
+                  📎 Use {ctx.label}
+                </button>
+              ))}
+
             <div className="flex items-end gap-2">
               <textarea
                 ref={inputRef}

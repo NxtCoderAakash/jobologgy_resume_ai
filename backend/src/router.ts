@@ -27,7 +27,7 @@ export async function route(
 
   if (method === "GET" && (path === "/" || path === "/health")) {
     // `rev` bumps with notable backend changes so a deploy can be verified.
-    sendJson(res, 200, { ok: true, service: "jobologgy-backend", rev: "chat-coach" });
+    sendJson(res, 200, { ok: true, service: "jobologgy-backend", rev: "chat-coach-v2" });
     return;
   }
 

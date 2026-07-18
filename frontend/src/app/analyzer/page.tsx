@@ -11,6 +11,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { scoreResume } from "@/lib/analyzerApi";
 import { setHandoff } from "@/lib/handoff";
+import { setChatContext } from "@/lib/chatContext";
 import type { AnalyzerResult } from "@/types/analyzer";
 import NavBar from "@/components/NavBar";
 import FileDropzone from "@/components/FileDropzone";
@@ -56,6 +57,16 @@ export default function AnalyzerPage() {
   // Abort an in-flight score when the user chooses to stop & edit.
   const abortRef = useRef<AbortController | null>(null);
   const [confirmStop, setConfirmStop] = useState(false);
+
+  // Publish a pasted résumé to the floating coach as context; clear on leave.
+  useEffect(() => {
+    setChatContext(
+      usePaste && resumeText.trim().length >= 40
+        ? { label: "the résumé you're analyzing", text: resumeText }
+        : null,
+    );
+  }, [usePaste, resumeText]);
+  useEffect(() => () => setChatContext(null), []);
 
   // Route guard.
   useEffect(() => {

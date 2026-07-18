@@ -34,6 +34,7 @@ import {
 } from "@/lib/builderApi";
 import { validateCv } from "@/lib/builderValidation";
 import { takeStudioCv } from "@/lib/handoff";
+import { setChatContext, cvToText } from "@/lib/chatContext";
 import { readResizedPhoto } from "@/lib/photo";
 import { emptyCv, normalizeCv, STEPS, type CvData, type DraftMeta, type StepId } from "@/types/builder";
 
@@ -180,6 +181,15 @@ function Builder() {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [saveState]);
+
+  // Publish the working résumé so the floating coach can use it as context.
+  useEffect(() => {
+    setChatContext(
+      phase === "editing" ? { label: "your résumé in the Studio", text: cvToText(cv) } : null,
+    );
+  }, [cv, phase]);
+  // Clear the context when leaving the Studio.
+  useEffect(() => () => setChatContext(null), []);
 
   // Debounced autosave whenever the CV or title changes while editing.
   const scheduleSave = useCallback(

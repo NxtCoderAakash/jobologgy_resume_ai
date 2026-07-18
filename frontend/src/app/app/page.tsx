@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { analyzeResume } from "@/lib/api";
 import { takeHandoff } from "@/lib/handoff";
+import { setChatContext } from "@/lib/chatContext";
 import { ATS_SYSTEMS, type AtsSystem } from "@/lib/atsSystems";
 import type { AnalyzeResult } from "@/types/analysis";
 import type { AnalyzerResult } from "@/types/analyzer";
@@ -110,6 +111,16 @@ export default function WorkspacePage() {
   // Abort an in-flight optimize when the user chooses to stop & edit.
   const abortRef = useRef<AbortController | null>(null);
   const [confirmStop, setConfirmStop] = useState(false);
+
+  // Publish a pasted résumé to the floating coach as context; clear on leave.
+  useEffect(() => {
+    setChatContext(
+      usePaste && resumeText.trim().length >= 40
+        ? { label: "the résumé you're optimizing", text: resumeText }
+        : null,
+    );
+  }, [usePaste, resumeText]);
+  useEffect(() => () => setChatContext(null), []);
 
   // Route guard.
   useEffect(() => {

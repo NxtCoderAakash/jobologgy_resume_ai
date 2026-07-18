@@ -9,6 +9,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { verifySupabaseJwt } from "../lib/auth.js";
 import { readRawBody, HttpError } from "../lib/http.js";
+import { rateLimit } from "../lib/rateLimit.js";
 import {
   streamChatReply,
   isRateLimit,
@@ -17,7 +18,9 @@ import {
 } from "../services/chat.js";
 
 export async function handleChat(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  await verifySupabaseJwt(req.headers["authorization"]);
+  const userId = await verifySupabaseJwt(req.headers["authorization"]);
+  // Throttle per user before doing any expensive work (throws a clean 429).
+  rateLimit(`chat:${userId}`, 30, 60_000);
 
   const raw = await readRawBody(req);
   let body: unknown;

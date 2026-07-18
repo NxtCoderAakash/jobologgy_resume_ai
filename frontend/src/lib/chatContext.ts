@@ -10,6 +10,8 @@ export interface ChatContext {
   label: string;
   /** Plain-text résumé the coach can read. */
   text: string;
+  /** Structured CV (Studio only) so the chat can render it to a PDF as-is. */
+  cv?: CvData;
 }
 
 let current: ChatContext | null = null;

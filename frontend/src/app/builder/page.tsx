@@ -185,7 +185,9 @@ function Builder() {
   // Publish the working résumé so the floating coach can use it as context.
   useEffect(() => {
     setChatContext(
-      phase === "editing" ? { label: "your résumé in the Studio", text: cvToText(cv) } : null,
+      phase === "editing"
+        ? { label: "your résumé in the Studio", text: cvToText(cv), cv }
+        : null,
     );
   }, [cv, phase]);
   // Clear the context when leaving the Studio.

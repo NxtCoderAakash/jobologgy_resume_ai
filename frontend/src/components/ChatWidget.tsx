@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { streamChat, extractFile, type ChatMessage } from "@/lib/chatApi";
 import { analyzeResume } from "@/lib/api";
+import { renderCvPdf } from "@/lib/builderApi";
 import { getChatContext, subscribeChatContext, type ChatContext } from "@/lib/chatContext";
 import BotMascot from "@/components/BotMascot";
 
@@ -47,6 +48,8 @@ interface Msg extends ChatMessage {
   file?: string;
   working?: string;
   optimize?: OptimizeResult;
+  /** A rendered résumé PDF (blob URL) with a download button. */
+  pdfUrl?: string;
 }
 
 const storageKey = (email: string) => `jobologgy.chat.${email}`;
@@ -413,7 +416,13 @@ export default function ChatWidget() {
       });
     } catch (e) {
       const aborted = (e as Error).name === "AbortError";
-      const msg = aborted ? "" : (e as Error).message || "Optimization failed — please try again.";
+      const raw = (e as Error).message || "";
+      // "Failed to fetch" = the (free-tier) server was likely idle/cold.
+      const msg = aborted
+        ? ""
+        : /failed to fetch|networkerror|load failed/i.test(raw)
+          ? "Couldn't reach the server — if it was idle, the first try can take up to a minute. Tap Optimize to try again."
+          : raw || "Optimization failed — please try again.";
       setMessages((prev) => {
         const copy = [...prev];
         const last = copy[copy.length - 1];
@@ -426,6 +435,53 @@ export default function ChatWidget() {
     } finally {
       setBusy(false);
       setAttaching(false);
+      abortRef.current = null;
+    }
+  }
+
+  /** "Studio it": render the current Studio résumé (as-is, with its template)
+   *  to a PDF and post a download button. */
+  async function renderStudioPdf() {
+    if (busy || !ctx?.cv) return;
+    setError("");
+    setBusy(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const cv = ctx.cv;
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: "Turn my Studio résumé into a PDF." },
+      { role: "assistant", content: "", working: "Rendering your résumé PDF…" },
+    ]);
+
+    try {
+      const token = await getToken();
+      const blob = await renderCvPdf({ cv, token });
+      const url = URL.createObjectURL(blob);
+      setMessages((prev) => {
+        const copy = [...prev];
+        copy[copy.length - 1] = {
+          role: "assistant",
+          content: "Here's your résumé as a PDF, using your current Studio template.",
+          pdfUrl: url,
+        };
+        return copy;
+      });
+    } catch (e) {
+      const raw = (e as Error).message || "";
+      const msg = /failed to fetch|networkerror|load failed/i.test(raw)
+        ? "Couldn't reach the server — if it was idle, the first try can take up to a minute. Try again."
+        : raw || "Couldn't render the PDF — please try again.";
+      setMessages((prev) => {
+        const copy = [...prev];
+        const last = copy[copy.length - 1];
+        if (last && last.working) copy[copy.length - 1] = { role: "assistant", content: `⚠ ${msg}` };
+        return copy;
+      });
+      setError(msg);
+    } finally {
+      setBusy(false);
       abortRef.current = null;
     }
   }
@@ -544,6 +600,17 @@ export default function ChatWidget() {
                     </span>
                   )}
                   {m.optimize && <OptimizeCard r={m.optimize} />}
+                  {m.pdfUrl && (
+                    <a
+                      href={m.pdfUrl}
+                      download="resume.pdf"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-700"
+                    >
+                      ⬇ Download résumé (PDF)
+                    </a>
+                  )}
                 </div>
               </div>
             ))}
@@ -605,14 +672,26 @@ export default function ChatWidget() {
             {attaching && <p className="mb-2 px-1 text-xs text-brand-600">Reading your file…</p>}
 
             {(ctx || attachedFile) && (
-              <button
-                type="button"
-                onClick={() => void runOptimize()}
-                disabled={busy}
-                className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                ⚡ Optimize for ATS (score + PDF)
-              </button>
+              <div className="mb-2 flex flex-col gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => void runOptimize()}
+                  disabled={busy}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  ⚡ Optimize for ATS (score + PDF)
+                </button>
+                {ctx?.cv && (
+                  <button
+                    type="button"
+                    onClick={() => void renderStudioPdf()}
+                    disabled={busy}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-ink-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    📄 Download my résumé as PDF
+                  </button>
+                )}
+              </div>
             )}
 
             <div className="flex items-end gap-2">

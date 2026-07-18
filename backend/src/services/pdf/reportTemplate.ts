@@ -30,6 +30,11 @@ function chips(items: string[], cls: string): string {
   return items.map((i) => `<span class="chip ${cls}">${esc(i)}</span>`).join("");
 }
 
+/** Format a score delta with an explicit sign so a drop never reads "+-4". */
+function signed(n: number): string {
+  return `${n >= 0 ? "+" : ""}${n}`;
+}
+
 export function renderReportHtml(a: Analysis): string {
   const delta = Math.round(a.atsScoreAfter - a.atsScoreBefore);
 
@@ -49,7 +54,7 @@ export function renderReportHtml(a: Analysis): string {
         <td class="num" style="color:${scoreColor(ba.after)};font-weight:700">${Math.round(
           ba.after,
         )}</td>
-        <td class="num delta">+${Math.round(ba.after - ba.before)}</td>
+        <td class="num delta">${signed(Math.round(ba.after - ba.before))}</td>
       </tr>`,
     )
     .join("");
@@ -122,7 +127,7 @@ export function renderReportHtml(a: Analysis): string {
     <div class="arrow">→</div>
     ${gauge("Optimized ATS score", a.atsScoreAfter)}
   </div>
-  <p style="margin-top:12px"><span class="delta-badge">Overall improvement: +${delta} points</span></p>
+  <p style="margin-top:12px"><span class="delta-badge">Overall change: ${signed(delta)} points</span></p>
 
   <section>
     <h2>Summary of changes</h2>

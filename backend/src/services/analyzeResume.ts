@@ -65,6 +65,14 @@ export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult>
     file: input.file,
     pastedText: input.pastedText,
   });
+  // Guard against near-empty input (mirrors the Analyzer/import handlers) so we
+  // don't burn Gemini calls producing meaningless scores from a few characters.
+  if (resumeText.trim().length < 30) {
+    throw new HttpError(
+      422,
+      "That résumé looks empty — please paste your résumé text or upload a file with your actual content.",
+    );
+  }
 
   // 1b. Fold in any skills the user confirmed they have. Because these are now
   //     part of the résumé the rewriter and the fabrication guard both see, they

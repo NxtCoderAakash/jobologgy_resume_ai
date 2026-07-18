@@ -3,7 +3,7 @@
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { verifySupabaseJwt } from "../lib/auth.js";
-import { sendJson, HttpError } from "../lib/http.js";
+import { sendJson, HttpError, serverError } from "../lib/http.js";
 import { getAdminClient } from "../services/supabase.js";
 
 const SIGNED_URL_TTL = 60 * 60;
@@ -23,7 +23,7 @@ export async function handleListJobs(
     .order("created_at", { ascending: false })
     .limit(50);
 
-  if (error) throw new HttpError(500, error.message);
+  if (error) throw serverError("jobs.list", error);
   sendJson(res, 200, { jobs: data });
 }
 

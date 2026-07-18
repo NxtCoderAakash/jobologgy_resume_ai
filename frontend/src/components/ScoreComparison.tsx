@@ -5,6 +5,7 @@ import ScoreGauge from "./ScoreGauge";
 
 export default function ScoreComparison({ analysis }: { analysis: Analysis }) {
   const delta = Math.round(analysis.atsScoreAfter - analysis.atsScoreBefore);
+  const gained = delta >= 0;
   const dims: [string, { before: number; after: number }][] = [
     ["Keyword match", analysis.scoreBreakdown.keywordMatch],
     ["Relevance to JD", analysis.scoreBreakdown.relevanceToJD],
@@ -19,8 +20,13 @@ export default function ScoreComparison({ analysis }: { analysis: Analysis }) {
         <ScoreGauge value={analysis.atsScoreBefore} label="Before" />
         <div className="flex flex-col items-center text-ink-500">
           <span className="text-3xl">→</span>
-          <span className="mt-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-700">
-            +{delta} pts
+          <span
+            className={`mt-2 rounded-full px-3 py-1 text-sm font-bold ${
+              gained ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+            }`}
+          >
+            {gained ? "+" : ""}
+            {delta} pts
           </span>
         </div>
         <ScoreGauge value={analysis.atsScoreAfter} label="After" emphasize />

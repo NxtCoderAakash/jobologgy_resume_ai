@@ -49,6 +49,16 @@ export class HttpError extends Error {
   }
 }
 
+/**
+ * Log the real (DB/provider) error server-side and return a client-safe 500 so
+ * internal details — Postgres constraint names, schema hints — never reach the
+ * response body.
+ */
+export function serverError(context: string, err: unknown): HttpError {
+  console.error(`[${context}]`, err instanceof Error ? err.message : err);
+  return new HttpError(500, "Something went wrong on our end. Please try again.");
+}
+
 /** Read a raw request body into a Buffer (used for JSON endpoints). */
 export function readRawBody(req: IncomingMessage): Promise<Buffer> {
   return new Promise((resolve, reject) => {

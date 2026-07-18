@@ -31,15 +31,36 @@ export function parseMultipart(req: IncomingMessage): Promise<ParsedForm> {
       headers: req.headers,
       // fieldSize is generous so a base64 profile-photo data URL sent as a field
       // isn't silently truncated (photos are resized client-side, ~<200 KB).
-      limits: { fileSize: MAX_FILE_BYTES, files: 1, fieldSize: 8 * 1024 * 1024 },
+      // fields/parts caps bound total memory so a flood of large fields can't OOM.
+      limits: {
+        fileSize: MAX_FILE_BYTES,
+        files: 1,
+        fieldSize: 8 * 1024 * 1024,
+        fields: 30,
+        parts: 32,
+      },
     });
 
     const fields: Record<string, string> = {};
     let file: UploadedFile | null = null;
     let tooLarge = false;
+    let truncated = false;
 
-    busboy.on("field", (name, value) => {
+    busboy.on("field", (name, value, info) => {
+      // A silently-truncated field (over fieldSize) would feed corrupt data
+      // downstream (broken base64 photo, invalid JSON) — reject instead.
+      if (info && (info.valueTruncated || info.nameTruncated)) {
+        truncated = true;
+        return;
+      }
       fields[name] = value;
+    });
+
+    busboy.on("fieldsLimit", () => {
+      truncated = true;
+    });
+    busboy.on("partsLimit", () => {
+      truncated = true;
     });
 
     busboy.on("file", (_name, stream, info) => {
@@ -63,6 +84,10 @@ export function parseMultipart(req: IncomingMessage): Promise<ParsedForm> {
     busboy.on("close", () => {
       if (tooLarge) {
         reject(new HttpError(413, "File exceeds the 12 MB limit"));
+        return;
+      }
+      if (truncated) {
+        reject(new HttpError(413, "Upload rejected: a field was too large or there were too many fields."));
         return;
       }
       resolve({ fields, file });

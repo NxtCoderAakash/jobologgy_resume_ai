@@ -34,7 +34,13 @@ export default function CvPreview({ cv }: { cv: CvData }) {
   const skills = cv.skills.filter(has);
   const certs = cv.certifications.filter(has);
   const isEmpty =
-    !has(cv.fullName) && !has(cv.summary) && !skills.length && !experience.length && !education.length;
+    !has(cv.fullName) &&
+    !has(cv.summary) &&
+    !skills.length &&
+    !experience.length &&
+    !education.length &&
+    !projects.length &&
+    !certs.length;
 
   // Approximate A4 page-break markers.
   const sheetRef = useRef<HTMLDivElement>(null);

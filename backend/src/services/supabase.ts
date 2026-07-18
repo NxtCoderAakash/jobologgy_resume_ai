@@ -29,21 +29,28 @@ async function uploadAndSign(
   body: Buffer,
   contentType: string,
 ): Promise<string | null> {
-  const up = await supabase.storage
-    .from(bucket)
-    .upload(path, body, { contentType, upsert: true });
-  if (up.error) {
-    console.error(`[supabase] upload to ${bucket}/${path} failed:`, up.error.message);
+  try {
+    const up = await supabase.storage
+      .from(bucket)
+      .upload(path, body, { contentType, upsert: true });
+    if (up.error) {
+      console.error(`[supabase] upload to ${bucket}/${path} failed:`, up.error.message);
+      return null;
+    }
+    const signed = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(path, SIGNED_URL_TTL);
+    if (signed.error) {
+      console.error(`[supabase] sign ${bucket}/${path} failed:`, signed.error.message);
+      return null;
+    }
+    return signed.data.signedUrl;
+  } catch (e) {
+    // Network-level rejection (not a returned .error) must still degrade to null
+    // so a transient storage blip can't discard an already-completed analysis.
+    console.error(`[supabase] upload/sign ${bucket}/${path} threw:`, (e as Error).message);
     return null;
   }
-  const signed = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(path, SIGNED_URL_TTL);
-  if (signed.error) {
-    console.error(`[supabase] sign ${bucket}/${path} failed:`, signed.error.message);
-    return null;
-  }
-  return signed.data.signedUrl;
 }
 
 export interface PersistInput {
@@ -81,7 +88,14 @@ export async function persistJob(input: PersistInput): Promise<PersistOutput> {
   ]);
 
   if (input.originalFile) {
-    const ext = input.originalFile.filename.split(".").pop() || "bin";
+    // Whitelist the extension — the filename is user-controlled and this upload
+    // uses the service-role key (bypasses Storage RLS), so a raw "../" in the
+    // name must never reach the storage key.
+    const ext =
+      (input.originalFile.filename.split(".").pop() || "bin")
+        .replace(/[^a-z0-9]/gi, "")
+        .slice(0, 8)
+        .toLowerCase() || "bin";
     originalFilePath = `${base}/original.${ext}`;
     await uploadAndSign(
       supabase,
@@ -92,20 +106,24 @@ export async function persistJob(input: PersistInput): Promise<PersistOutput> {
     );
   }
 
-  const insert = await supabase.from("resume_jobs").insert({
-    id: input.jobId,
-    user_id: input.userId,
-    job_description: input.jobDescription,
-    original_text: input.originalText,
-    ats_before: Math.round(input.analysis.atsScoreBefore),
-    ats_after: Math.round(input.analysis.atsScoreAfter),
-    analysis: input.analysis,
-    original_file_path: originalFilePath,
-    cv_pdf_path: cvPdfPath,
-    report_pdf_path: reportPdfPath,
-  });
-  if (insert.error) {
-    console.error("[supabase] insert resume_jobs failed:", insert.error.message);
+  try {
+    const insert = await supabase.from("resume_jobs").insert({
+      id: input.jobId,
+      user_id: input.userId,
+      job_description: input.jobDescription,
+      original_text: input.originalText,
+      ats_before: Math.round(input.analysis.atsScoreBefore),
+      ats_after: Math.round(input.analysis.atsScoreAfter),
+      analysis: input.analysis,
+      original_file_path: originalFilePath,
+      cv_pdf_path: cvPdfPath,
+      report_pdf_path: reportPdfPath,
+    });
+    if (insert.error) {
+      console.error("[supabase] insert resume_jobs failed:", insert.error.message);
+    }
+  } catch (e) {
+    console.error("[supabase] insert resume_jobs threw:", (e as Error).message);
   }
 
   return { cvPdfUrl, reportPdfUrl };

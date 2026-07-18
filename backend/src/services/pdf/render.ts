@@ -7,10 +7,25 @@ let browserPromise: Promise<Browser> | null = null;
 
 function getBrowser(): Promise<Browser> {
   if (!browserPromise) {
-    browserPromise = puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    browserPromise = puppeteer
+      .launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      })
+      .then((browser) => {
+        // If Chrome crashes or is disconnected, drop the cached instance so the
+        // next render relaunches instead of reusing a dead browser forever.
+        browser.on("disconnected", () => {
+          browserPromise = null;
+        });
+        return browser;
+      })
+      .catch((err) => {
+        // Never cache a rejected launch — otherwise one transient failure at boot
+        // would permanently break PDF generation until a process restart.
+        browserPromise = null;
+        throw err;
+      });
   }
   return browserPromise;
 }

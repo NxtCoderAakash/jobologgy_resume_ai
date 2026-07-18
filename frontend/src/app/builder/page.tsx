@@ -100,6 +100,9 @@ function Builder() {
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savingRef = useRef(false);
+  // Mirror of draftId read synchronously inside autosave, so a save that starts
+  // before the first id comes back never POSTs without it and creates a duplicate.
+  const draftIdRef = useRef<string | null>(null);
 
   const validation = validateCv(cv);
 
@@ -128,25 +131,28 @@ function Builder() {
       const token = data.session.access_token;
       const wanted = searchParams.get("draft");
       // Optimizer → Studio hand-off: open pre-filled with the optimized résumé.
-      const studio = wanted ? null : takeStudioCv();
-      if (studio) {
-        setCv(normalizeCv(studio.cv));
-        setTitle(studio.title || "Optimized résumé");
-        setPhase("editing");
-        // Mark dirty so autosave persists it as a new draft.
-        scheduleSave(normalizeCv(studio.cv), studio.title || "Optimized résumé");
-      } else if (wanted) {
+      // Consume it unconditionally so a stashed CV can never leak into a later
+      // visit; a ?draft in the URL still takes priority over it.
+      const studio = takeStudioCv();
+      if (wanted) {
         try {
           const d = await getDraft({ id: wanted, token });
           if (cancelled) return;
           setCv(d.cv);
           setTitle(d.title);
+          draftIdRef.current = d.id;
           setDraftId(d.id);
           setPhase("editing");
         } catch {
           // Bad/foreign draft id — fall back to the start screen.
           router.replace("/builder");
         }
+      } else if (studio) {
+        setCv(normalizeCv(studio.cv));
+        setTitle(studio.title || "Optimized résumé");
+        setPhase("editing");
+        // Mark dirty so autosave persists it as a new draft.
+        scheduleSave(normalizeCv(studio.cv), studio.title || "Optimized résumé");
       }
       try {
         const list = await listDrafts(token);
@@ -180,13 +186,25 @@ function Builder() {
     (nextCv: CvData, nextTitle: string) => {
       setSaveState("dirty");
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(async () => {
-        if (savingRef.current) return; // a save is in flight; the next edit reschedules
+      // Named so it can reschedule itself: if a save is already in flight when the
+      // debounce fires, retry shortly instead of dropping this batch — dropping
+      // would lose the latest edits AND still flip the badge to a false "Saved ✓".
+      saveTimer.current = setTimeout(async function attempt() {
+        if (savingRef.current) {
+          saveTimer.current = setTimeout(attempt, 400);
+          return;
+        }
         savingRef.current = true;
         setSaveState("saving");
         try {
           const token = await getToken();
-          const res = await saveDraft({ id: draftId ?? undefined, title: nextTitle, cv: nextCv, token });
+          const res = await saveDraft({
+            id: draftIdRef.current ?? undefined,
+            title: nextTitle,
+            cv: nextCv,
+            token,
+          });
+          draftIdRef.current = res.id;
           setDraftId(res.id);
           setSaveState("saved");
           // Put the draft id in the URL so refresh restores this session.
@@ -199,7 +217,7 @@ function Builder() {
       }, 1500);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [draftId],
+    [],
   );
 
   const patch = useCallback(
@@ -262,6 +280,7 @@ function Builder() {
   function startBlank() {
     setCv(emptyCv());
     setTitle("Untitled résumé");
+    draftIdRef.current = null;
     setDraftId(null);
     setPhase("editing");
     setStep("contact");
@@ -274,6 +293,7 @@ function Builder() {
       const d = await getDraft({ id, token });
       setCv(d.cv);
       setTitle(d.title);
+      draftIdRef.current = d.id;
       setDraftId(d.id);
       setPhase("editing");
       setStep("contact");

@@ -17,6 +17,9 @@ export default function FileDropzone({
 
   function pick(files: FileList | null) {
     if (files && files[0]) onFile(files[0]);
+    // Clear the native input so re-selecting the SAME file (e.g. after Remove)
+    // still fires a change event.
+    if (inputRef.current) inputRef.current.value = "";
   }
 
   return (

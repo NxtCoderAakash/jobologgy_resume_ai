@@ -7,7 +7,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 import { verifySupabaseJwt } from "../lib/auth.js";
 import { parseMultipart } from "../lib/parseMultipart.js";
-import { sendJson, sendPdf, readRawBody, HttpError } from "../lib/http.js";
+import { sendJson, sendPdf, readRawBody, HttpError, serverError } from "../lib/http.js";
 import { extractResumeText } from "../services/extractText.js";
 import { structureResume, suggestForField } from "../services/builderAi.js";
 import { renderBuilderCvHtml } from "../services/pdf/builderCvTemplate.js";
@@ -127,7 +127,7 @@ export async function handleDraftsList(
     .order("updated_at", { ascending: false })
     .limit(50);
 
-  if (error) throw new HttpError(500, error.message);
+  if (error) throw serverError("builder.db", error);
   sendJson(res, 200, { drafts: data });
 }
 
@@ -152,7 +152,7 @@ export async function handleDraftSave(
       .eq("id", id)
       .eq("user_id", userId)
       .select("id, updated_at");
-    if (error) throw new HttpError(500, error.message);
+    if (error) throw serverError("builder.db", error);
     if (!data || data.length === 0) throw new HttpError(404, "Draft not found");
     sendJson(res, 200, { id: data[0].id, updatedAt: data[0].updated_at });
     return;
@@ -162,7 +162,7 @@ export async function handleDraftSave(
   const { error } = await supabase
     .from("resume_drafts")
     .insert({ id: newId, user_id: userId, title, cv });
-  if (error) throw new HttpError(500, error.message);
+  if (error) throw serverError("builder.db", error);
   sendJson(res, 200, { id: newId, updatedAt: new Date().toISOString() });
 }
 
@@ -184,8 +184,10 @@ export async function handleDraftGet(
     .single();
   if (error || !data) throw new HttpError(404, "Draft not found");
 
-  // Lenient parse so an old/odd payload can never brick the editor.
-  const cv = builderCvSchema.parse(data.cv ?? {});
+  // Lenient parse so an old/odd payload can never brick the editor — a non-object
+  // (legacy/corrupt row) would make .parse throw a 500, so fall back to an empty CV.
+  const parsed = builderCvSchema.safeParse(data.cv ?? {});
+  const cv = parsed.success ? parsed.data : builderCvSchema.parse({});
   sendJson(res, 200, { id: data.id, title: data.title, cv, updatedAt: data.updated_at });
 }
 
@@ -204,6 +206,6 @@ export async function handleDraftDelete(
     .delete()
     .eq("id", draftId)
     .eq("user_id", userId);
-  if (error) throw new HttpError(500, error.message);
+  if (error) throw serverError("builder.db", error);
   sendJson(res, 200, { ok: true });
 }

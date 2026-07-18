@@ -50,7 +50,7 @@ export default function DownloadCard({
   return (
     <div className="card">
       <h2 className="text-lg font-bold text-ink-900">Download your PDFs</h2>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {items.map((it) => (
           <div
             key={it.title}

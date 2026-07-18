@@ -49,7 +49,7 @@ export default function HomePage() {
 
       {/* Features */}
       <section className="mx-auto max-w-6xl px-6 pb-24">
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {features.map((f) => (
             <div key={f.title} className="card">
               <div className="mb-3 grid h-12 w-12 place-items-center rounded-xl bg-brand-50 text-2xl">
@@ -68,7 +68,7 @@ export default function HomePage() {
           <h2 className="text-center text-3xl font-extrabold text-ink-900">
             How it works
           </h2>
-          <div className="mt-12 grid gap-8 md:grid-cols-3">
+          <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3">
             {[
               ["1", "Upload", "Add your résumé (PDF, DOCX, image, or paste text) and the job description."],
               ["2", "AI optimizes", "Gemini rewrites for ATS + keywords, and scores the difference."],

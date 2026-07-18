@@ -115,7 +115,7 @@ export default function AnalyzerReport({
       {/* Dimension breakdown */}
       <div className="card">
         <h2 className="text-lg font-bold text-ink-900">Score breakdown</h2>
-        <div className="mt-5 grid gap-6 sm:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2">
           <Bar label="Keyword match" dim={b.keywordMatch} />
           <Bar label="Relevance to the job" dim={b.relevanceToJD} />
           <Bar label="Formatting / ATS-parseability" dim={b.formatting} />
@@ -142,7 +142,7 @@ export default function AnalyzerReport({
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <BulletCard title="Strengths" icon="💪" items={result.strengths} toneClass="text-emerald-700" />
         <BulletCard title="What's holding the score down" icon="🕳" items={result.gaps} toneClass="text-red-700" />
       </div>

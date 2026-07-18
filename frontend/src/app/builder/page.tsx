@@ -360,7 +360,7 @@ function Builder() {
             review before applying.
           </p>
 
-          <div className="mt-8 grid gap-6 md:grid-cols-2">
+          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
             <div className="card">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-lg font-bold text-ink-900">Import your résumé</h2>

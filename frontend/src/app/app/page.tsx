@@ -329,7 +329,7 @@ export default function WorkspacePage() {
 
           {/* Inputs — collapse to a compact summary while optimizing to free up space. */}
           {!busy && (!result || editing) && (
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               {/* Résumé input */}
               <div className="card">
                 <div className="mb-3 flex items-center justify-between">
@@ -537,7 +537,7 @@ export default function WorkspacePage() {
                   Pick a look for your generated CV. Previews below are sample layouts — your own
                   content fills the real résumé.
                 </p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {(
                   [
                     {

@@ -78,7 +78,9 @@ body {
   animation: botBlink 4.5s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .bot-eyes {
+  .bot-eyes,
+  .scan-beam,
+  .scan-shimmer {
     animation: none;
   }
 }

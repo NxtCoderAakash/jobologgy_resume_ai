@@ -157,7 +157,7 @@ export function ContactForm({ cv, patch }: FormProps) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Full name *">
           <input
             className="input"
@@ -362,7 +362,7 @@ export function ExperienceForm({ cv, patch }: FormProps) {
             />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Job title *">
               <input
                 className="input py-2"
@@ -479,7 +479,7 @@ export function EducationForm({ cv, patch }: FormProps) {
               onRemove={() => patch((p) => ({ ...p, education: p.education.filter((_, j) => j !== i) }))}
             />
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Degree / qualification">
               <input
                 className="input py-2"

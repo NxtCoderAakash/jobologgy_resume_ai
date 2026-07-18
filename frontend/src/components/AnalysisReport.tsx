@@ -18,7 +18,7 @@ export default function AnalysisReport({
   return (
     <div className="space-y-6">
       <DownloadCard result={result} cvStyle={cvStyle} photoDataUrl={photoDataUrl} />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <ScoreComparison analysis={result.analysis} />
         <KeywordDiff analysis={result.analysis} />
       </div>

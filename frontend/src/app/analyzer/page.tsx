@@ -184,7 +184,7 @@ export default function AnalyzerPage() {
 
           {/* Inputs — collapse to a compact summary while scanning to free up space. */}
           {!busy && (!result || editing) && (
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div className="card">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="text-lg font-bold text-ink-900">Your résumé</h2>

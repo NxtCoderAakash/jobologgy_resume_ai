@@ -50,3 +50,30 @@ export async function streamChat(opts: {
     reader.releaseLock();
   }
 }
+
+/** Upload a file to POST /api/extract and get its plain text back. */
+export async function extractFile(opts: {
+  file: File;
+  token: string;
+  signal?: AbortSignal;
+}): Promise<{ text: string; filename: string }> {
+  const form = new FormData();
+  form.append("file", opts.file);
+  const res = await fetch(`${BACKEND_URL}/api/extract`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${opts.token}` },
+    body: form,
+    signal: opts.signal,
+  });
+  if (!res.ok) {
+    let message = `Request failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.error) message = body.error;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new Error(message);
+  }
+  return (await res.json()) as { text: string; filename: string };
+}

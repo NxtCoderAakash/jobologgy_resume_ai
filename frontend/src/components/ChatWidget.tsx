@@ -1,21 +1,23 @@
 "use client";
 
 /**
- * Floating résumé/career coach — a chat bubble available on every page once the
- * user is logged in. Streams replies from POST /api/chat. Mobile-first and
- * overflow-safe per FRONTEND_GUIDELINES (R2/R5/R7).
+ * Floating résumé/career coach — a chat bubble (the Yeti mascot) available on
+ * every page once logged in. Streams replies from POST /api/chat. Mobile-first
+ * and overflow-safe per FRONTEND_GUIDELINES (R2/R5/R7).
  *
  * - History persists per user in localStorage (survives reload).
- * - Context-aware: if a page (Studio/Optimizer/Analyzer) publishes the résumé
- *   the user is working on, the coach can use it without pasting.
+ * - Context-aware: pages publish the résumé the user is working on.
+ * - Attachments: a file can be uploaded; POST /api/extract turns it into text
+ *   the coach reads.
  */
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { streamChat, type ChatMessage } from "@/lib/chatApi";
+import { streamChat, extractFile, type ChatMessage } from "@/lib/chatApi";
 import { getChatContext, subscribeChatContext, type ChatContext } from "@/lib/chatContext";
+import BotMascot from "@/components/BotMascot";
 
 const GREETING =
-  "Hi! I'm your résumé coach. Paste a résumé or a bullet point and I'll sharpen it, compare it to a job description, or help you prep for interviews. What are you working on?";
+  "Hi! I'm your résumé coach. Paste a résumé, attach a file, or drop a bullet point and I'll sharpen it, compare it to a job description, or help you prep for interviews. What are you working on?";
 
 const SUGGESTIONS = [
   "Review my résumé",
@@ -24,10 +26,15 @@ const SUGGESTIONS = [
   "Interview prep tips",
 ];
 
+const ACCEPT = ".pdf,.docx,.png,.jpg,.jpeg,.webp,.txt,application/pdf,image/*";
+const MAX_FILE_BYTES = 12 * 1024 * 1024;
+
 /** A turn. `apiContent` (when set) is sent to the model instead of `content`,
- *  letting us attach the user's résumé without showing the dump in the bubble. */
+ *  letting us attach the résumé/file without showing the dump in the bubble.
+ *  `file` is a display-only attachment label. */
 interface Msg extends ChatMessage {
   apiContent?: string;
+  file?: string;
 }
 
 const storageKey = (email: string) => `jobologgy.chat.${email}`;
@@ -49,6 +56,8 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState<Msg[]>([{ role: "assistant", content: GREETING }]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [attaching, setAttaching] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [error, setError] = useState("");
 
   const [ctx, setCtx] = useState<ChatContext | null>(null);
@@ -57,11 +66,11 @@ export default function ChatWidget() {
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const loadedRef = useRef(false);
   const contextSentRef = useRef(false);
   const prevLabelRef = useRef<string | null>(null);
 
-  // Only show the coach to logged-in users.
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
@@ -118,10 +127,9 @@ export default function ChatWidget() {
     return subscribeChatContext(sync);
   }, []);
 
-  // Auto-scroll to the newest content as it streams.
   useEffect(() => {
     if (open && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages, open]);
+  }, [messages, open, attaching]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -143,21 +151,76 @@ export default function ChatWidget() {
     return token;
   }
 
+  function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!f) return;
+    if (f.size > MAX_FILE_BYTES) {
+      setError("That file is over 12 MB — please attach a smaller one.");
+      return;
+    }
+    setError("");
+    setAttachedFile(f);
+    setOpen(true);
+    inputRef.current?.focus();
+  }
+
   async function send(text?: string) {
     const content = (text ?? input).trim();
-    if (!content || busy) return;
-    setInput("");
-    setError("");
+    const file = attachedFile;
+    if ((!content && !file) || busy) return;
 
-    // Attach the working résumé once per context (kept in history via apiContent).
-    let apiContent: string | undefined;
-    if (ctx && attached && !contextSentRef.current) {
-      apiContent =
+    setError("");
+    setBusy(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    let token: string;
+    try {
+      token = await getToken();
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+      abortRef.current = null;
+      return;
+    }
+
+    // Read an attached file into text first (shows a "Reading…" note).
+    let fileBlock = "";
+    const fileName = file?.name;
+    if (file) {
+      setAttaching(true);
+      try {
+        const r = await extractFile({ file, token, signal: controller.signal });
+        fileBlock = `Attached file "${r.filename}":\n"""\n${r.text}\n"""\n\n`;
+      } catch (e) {
+        setAttaching(false);
+        setBusy(false);
+        abortRef.current = null;
+        if ((e as Error).name !== "AbortError") {
+          setError((e as Error).message || "Could not read that file.");
+        }
+        return;
+      }
+      setAttaching(false);
+    }
+
+    setInput("");
+    setAttachedFile(null);
+    const finalText = content || "Please review this résumé and give me your top suggestions.";
+
+    // Attach the working résumé once per context (skip if a file was uploaded).
+    let ctxBlock = "";
+    if (ctx && attached && !contextSentRef.current && !file) {
+      ctxBlock =
         `Here is the résumé I'm currently working on (${ctx.label}):\n"""\n` +
-        `${ctx.text.slice(0, 8000)}\n"""\n\n${content}`;
+        `${ctx.text.slice(0, 8000)}\n"""\n\n`;
       contextSentRef.current = true;
     }
-    const userMsg: Msg = { role: "user", content, apiContent };
+
+    const prefix = ctxBlock + fileBlock;
+    const apiContent = prefix ? prefix + finalText : undefined;
+    const userMsg: Msg = { role: "user", content: finalText, apiContent, file: fileName };
 
     const base: Msg[] = [...messages, userMsg];
     const firstUser = base.findIndex((m) => m.role === "user");
@@ -166,12 +229,8 @@ export default function ChatWidget() {
       .map((m) => ({ role: m.role, content: m.apiContent ?? m.content }));
 
     setMessages((prev) => [...prev, userMsg, { role: "assistant", content: "" }]);
-    setBusy(true);
-    const controller = new AbortController();
-    abortRef.current = controller;
 
     try {
-      const token = await getToken();
       await streamChat({
         messages: apiMessages,
         token,
@@ -213,6 +272,7 @@ export default function ChatWidget() {
     abortRef.current?.abort();
     setMessages([{ role: "assistant", content: GREETING }]);
     setError("");
+    setAttachedFile(null);
     contextSentRef.current = false;
     if (ctx) setAttached(true);
     try {
@@ -233,6 +293,7 @@ export default function ChatWidget() {
 
   const showSuggestions = messages.filter((m) => m.role === "user").length === 0;
   const hasHistory = messages.some((m) => m.role === "user");
+  const canSend = !!input.trim() || !!attachedFile;
 
   return (
     <>
@@ -242,11 +303,9 @@ export default function ChatWidget() {
           aria-label="Open the résumé coach chat"
           aria-expanded={false}
           onClick={() => setOpen(true)}
-          className="fixed bottom-4 right-4 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-white shadow-card transition hover:bg-brand-700 sm:bottom-6 sm:right-6"
+          className="fixed bottom-4 right-4 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-card ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-lg sm:bottom-6 sm:right-6"
         >
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7A8.38 8.38 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.38 8.38 0 0 1 21 11.5z" />
-          </svg>
+          <BotMascot className="h-11 w-11" />
         </button>
       )}
 
@@ -258,9 +317,12 @@ export default function ChatWidget() {
         >
           {/* Header */}
           <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-brand-600 px-4 py-3 text-white">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold">Résumé Coach</p>
-              <p className="truncate text-xs text-brand-100">AI career &amp; résumé help</p>
+            <div className="flex min-w-0 items-center gap-2">
+              <BotMascot className="h-8 w-8 shrink-0" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold">Résumé Coach</p>
+                <p className="truncate text-xs text-brand-100">AI career &amp; résumé help</p>
+              </div>
             </div>
             <div className="flex shrink-0 items-center gap-1">
               {hasHistory && (
@@ -306,13 +368,14 @@ export default function ChatWidget() {
                       : "border border-slate-200 bg-white text-ink-700"
                   }`}
                 >
+                  {m.file && <span className="mb-1 block text-xs opacity-80">📎 {m.file}</span>}
                   {m.content ? (
                     renderRich(m.content)
                   ) : (
-                    <span className="inline-flex gap-1 py-1 align-middle">
-                      <span className="h-1.5 w-1.5 rounded-full bg-ink-500 motion-safe:animate-bounce [animation-delay:-0.3s]" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-ink-500 motion-safe:animate-bounce [animation-delay:-0.15s]" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-ink-500 motion-safe:animate-bounce" />
+                    <span className="inline-flex items-center gap-1 py-1 align-middle">
+                      <span className="h-2 w-2 rounded-full bg-brand-500 motion-safe:animate-bounce [animation-delay:-0.3s]" />
+                      <span className="h-2 w-2 rounded-full bg-brand-500 motion-safe:animate-bounce [animation-delay:-0.15s]" />
+                      <span className="h-2 w-2 rounded-full bg-brand-500 motion-safe:animate-bounce" />
                     </span>
                   )}
                 </div>
@@ -360,7 +423,39 @@ export default function ChatWidget() {
                 </button>
               ))}
 
+            {attachedFile && (
+              <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs text-ink-700">
+                <span className="min-w-0 flex-1 truncate">📎 {attachedFile.name}</span>
+                <button
+                  type="button"
+                  aria-label="Remove attachment"
+                  onClick={() => setAttachedFile(null)}
+                  className="shrink-0 rounded p-0.5 font-bold hover:bg-slate-200"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {attaching && <p className="mb-2 px-1 text-xs text-brand-600">Reading your file…</p>}
+
             <div className="flex items-end gap-2">
+              <button
+                type="button"
+                aria-label="Attach a résumé file"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-ink-700 transition hover:bg-slate-100"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M21.44 11.05l-9.19 9.19a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a1.5 1.5 0 0 1-2.12-2.12l8.49-8.49" />
+                </svg>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPT}
+                className="hidden"
+                onChange={onPickFile}
+              />
               <textarea
                 ref={inputRef}
                 rows={1}
@@ -384,7 +479,7 @@ export default function ChatWidget() {
                   type="button"
                   aria-label="Send message"
                   onClick={() => void send()}
-                  disabled={!input.trim()}
+                  disabled={!canSend}
                   className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

@@ -15,6 +15,7 @@ import {
 } from "./handlers/builder.js";
 import { handleAnalyzerScore } from "./handlers/analyzer.js";
 import { handleChat } from "./handlers/chat.js";
+import { handleExtract } from "./handlers/extract.js";
 import { sendJson, HttpError } from "./lib/http.js";
 
 export async function route(
@@ -27,7 +28,7 @@ export async function route(
 
   if (method === "GET" && (path === "/" || path === "/health")) {
     // `rev` bumps with notable backend changes so a deploy can be verified.
-    sendJson(res, 200, { ok: true, service: "jobologgy-backend", rev: "chat-coach-v2" });
+    sendJson(res, 200, { ok: true, service: "jobologgy-backend", rev: "chat-coach-v3" });
     return;
   }
 
@@ -56,6 +57,12 @@ export async function route(
   // ---- Coach chatbot (streaming) — additive route ----
   if (method === "POST" && path === "/api/chat") {
     await handleChat(req, res);
+    return;
+  }
+
+  // ---- File text extraction (for chat attachments) — additive route ----
+  if (method === "POST" && path === "/api/extract") {
+    await handleExtract(req, res);
     return;
   }
 

@@ -13,11 +13,12 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { streamChat, extractFile, type ChatMessage } from "@/lib/chatApi";
+import { analyzeResume } from "@/lib/api";
 import { getChatContext, subscribeChatContext, type ChatContext } from "@/lib/chatContext";
 import BotMascot from "@/components/BotMascot";
 
 const GREETING =
-  "Hi! I'm your résumé coach. Paste a résumé, attach a file, or drop a bullet point and I'll sharpen it, compare it to a job description, or help you prep for interviews. What are you working on?";
+  "Hi! I'm your résumé coach. Paste a résumé, attach a file, or drop a bullet point and I'll sharpen it, compare it to a job description, or prep you for interviews. I can even run a full ATS optimization and hand you the PDF right here. What are you working on?";
 
 const SUGGESTIONS = [
   "Review my résumé",
@@ -29,12 +30,23 @@ const SUGGESTIONS = [
 const ACCEPT = ".pdf,.docx,.png,.jpg,.jpeg,.webp,.txt,application/pdf,image/*";
 const MAX_FILE_BYTES = 12 * 1024 * 1024;
 
+/** An optimize result rendered as a score + download card in the bubble. */
+interface OptimizeResult {
+  before: number;
+  after: number;
+  cvUrl: string | null;
+  reportUrl: string | null;
+}
+
 /** A turn. `apiContent` (when set) is sent to the model instead of `content`,
  *  letting us attach the résumé/file without showing the dump in the bubble.
- *  `file` is a display-only attachment label. */
+ *  `file` is a display-only attachment label; `working` shows a labelled
+ *  spinner during a long action; `optimize` renders a result card. */
 interface Msg extends ChatMessage {
   apiContent?: string;
   file?: string;
+  working?: string;
+  optimize?: OptimizeResult;
 }
 
 const storageKey = (email: string) => `jobologgy.chat.${email}`;
@@ -47,6 +59,59 @@ function renderRich(text: string) {
     ) : (
       <span key={i}>{seg}</span>
     ),
+  );
+}
+
+/** Vibrant three-dot typing/working indicator (reduced-motion friendly). */
+function Dots() {
+  return (
+    <span className="inline-flex gap-1">
+      <span className="h-2 w-2 rounded-full bg-brand-500 motion-safe:animate-bounce [animation-delay:-0.3s]" />
+      <span className="h-2 w-2 rounded-full bg-brand-500 motion-safe:animate-bounce [animation-delay:-0.15s]" />
+      <span className="h-2 w-2 rounded-full bg-brand-500 motion-safe:animate-bounce" />
+    </span>
+  );
+}
+
+/** Score + PDF download card rendered inside an assistant bubble. */
+function OptimizeCard({ r }: { r: OptimizeResult }) {
+  const delta = r.after - r.before;
+  return (
+    <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+      <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-ink-900">
+        <span className="text-ink-500">{r.before}</span>
+        <span aria-hidden>→</span>
+        <span className="text-emerald-600">{r.after}</span>
+        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
+          {delta >= 0 ? "+" : ""}
+          {delta} pts
+        </span>
+      </div>
+      <div className="mt-2 flex flex-col gap-2">
+        {r.cvUrl ? (
+          <a
+            href={r.cvUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-700"
+          >
+            ⬇ Optimized CV (PDF)
+          </a>
+        ) : (
+          <p className="text-xs text-ink-500">The PDF couldn&apos;t be generated this time — try again.</p>
+        )}
+        {r.reportUrl && (
+          <a
+            href={r.reportUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-ink-700 transition hover:bg-slate-50"
+          >
+            ⬇ Improvement report (PDF)
+          </a>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -268,6 +333,103 @@ export default function ChatWidget() {
     abortRef.current?.abort();
   }
 
+  /** Run the full ATS optimize pipeline on the attached/context résumé and post
+   *  the score + downloadable PDFs back into the chat. */
+  async function runOptimize() {
+    if (busy) return;
+    setError("");
+    setBusy(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    let token: string;
+    try {
+      token = await getToken();
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+      abortRef.current = null;
+      return;
+    }
+
+    // Resolve the résumé text: prefer an attached file, else the page context.
+    const file = attachedFile;
+    let resumeText = "";
+    let source = "";
+    try {
+      if (file) {
+        setAttaching(true);
+        const r = await extractFile({ file, token, signal: controller.signal });
+        resumeText = r.text;
+        source = r.filename;
+        setAttaching(false);
+      } else if (ctx) {
+        resumeText = ctx.text;
+        source = ctx.label;
+      } else {
+        setError("Attach or paste a résumé first, then tap Optimize.");
+        setBusy(false);
+        abortRef.current = null;
+        return;
+      }
+    } catch (e) {
+      setAttaching(false);
+      setBusy(false);
+      abortRef.current = null;
+      if ((e as Error).name !== "AbortError") {
+        setError((e as Error).message || "Could not read that file.");
+      }
+      return;
+    }
+
+    setAttachedFile(null);
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: "Optimize my résumé for ATS and generate the PDF.", file: file ? source : undefined },
+      { role: "assistant", content: "", working: "Optimizing — scoring your résumé and building your PDF (~30s)…" },
+    ]);
+
+    try {
+      const res = await analyzeResume({ jobDescription: "", resumeText, token, signal: controller.signal });
+      const a = res.analysis;
+      const before = Math.round(a.atsScoreBefore);
+      const after = Math.round(a.atsScoreAfter);
+      const top = (a.improvements || [])
+        .slice(0, 3)
+        .map((i) => `• ${i.area}`)
+        .join("\n");
+      const text =
+        `Done — I ran a general ATS optimization.\n\n**ATS score: ${before} → ${after}**` +
+        (top ? `\n\nTop improvements:\n${top}` : "") +
+        `\n\nDownload your files below. Want it targeted to a specific job or a styled/photo template? Use the Optimizer or Studio pages.`;
+      setMessages((prev) => {
+        const copy = [...prev];
+        copy[copy.length - 1] = {
+          role: "assistant",
+          content: text,
+          optimize: { before, after, cvUrl: res.cvPdfUrl, reportUrl: res.reportPdfUrl },
+        };
+        return copy;
+      });
+    } catch (e) {
+      const aborted = (e as Error).name === "AbortError";
+      const msg = aborted ? "" : (e as Error).message || "Optimization failed — please try again.";
+      setMessages((prev) => {
+        const copy = [...prev];
+        const last = copy[copy.length - 1];
+        if (last && last.working) {
+          copy[copy.length - 1] = { role: "assistant", content: msg ? `⚠ ${msg}` : "Stopped." };
+        }
+        return copy;
+      });
+      if (msg) setError(msg);
+    } finally {
+      setBusy(false);
+      setAttaching(false);
+      abortRef.current = null;
+    }
+  }
+
   function clearChat() {
     abortRef.current?.abort();
     setMessages([{ role: "assistant", content: GREETING }]);
@@ -369,15 +531,19 @@ export default function ChatWidget() {
                   }`}
                 >
                   {m.file && <span className="mb-1 block text-xs opacity-80">📎 {m.file}</span>}
-                  {m.content ? (
+                  {m.working ? (
+                    <span className="inline-flex items-center gap-2 py-0.5 align-middle">
+                      <Dots />
+                      <span className="text-xs text-ink-500">{m.working}</span>
+                    </span>
+                  ) : m.content ? (
                     renderRich(m.content)
                   ) : (
                     <span className="inline-flex items-center gap-1 py-1 align-middle">
-                      <span className="h-2 w-2 rounded-full bg-brand-500 motion-safe:animate-bounce [animation-delay:-0.3s]" />
-                      <span className="h-2 w-2 rounded-full bg-brand-500 motion-safe:animate-bounce [animation-delay:-0.15s]" />
-                      <span className="h-2 w-2 rounded-full bg-brand-500 motion-safe:animate-bounce" />
+                      <Dots />
                     </span>
                   )}
+                  {m.optimize && <OptimizeCard r={m.optimize} />}
                 </div>
               </div>
             ))}
@@ -437,6 +603,17 @@ export default function ChatWidget() {
               </div>
             )}
             {attaching && <p className="mb-2 px-1 text-xs text-brand-600">Reading your file…</p>}
+
+            {(ctx || attachedFile) && (
+              <button
+                type="button"
+                onClick={() => void runOptimize()}
+                disabled={busy}
+                className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ⚡ Optimize for ATS (score + PDF)
+              </button>
+            )}
 
             <div className="flex items-end gap-2">
               <button

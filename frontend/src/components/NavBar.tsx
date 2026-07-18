@@ -14,7 +14,7 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 font-semibold transition sm:px-3 ${
+      className={`whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-semibold transition sm:px-3 sm:text-sm ${
         active
           ? "bg-brand-50 text-brand-700"
           : "text-ink-700 hover:bg-slate-100 hover:text-brand-600"
@@ -43,27 +43,30 @@ export default function NavBar() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/80 backdrop-blur">
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 sm:px-6 sm:py-4 lg:px-12">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-nowrap items-center justify-between gap-x-2 px-3 py-2.5 sm:px-6 sm:py-4 lg:px-12">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <Link
             href="/"
-            className="flex items-center gap-2 whitespace-nowrap text-[15px] font-extrabold text-ink-900 sm:text-base"
+            className="flex items-center gap-1.5 whitespace-nowrap text-sm font-extrabold text-ink-900 sm:gap-2 sm:text-base"
           >
-            <Logo className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" />
+            <Logo className="h-7 w-7 shrink-0 sm:h-9 sm:w-9" />
             Jobologyy<span className="text-brand-600">AI</span>
           </Link>
-          <BotMascot />
+          <BotMascot className="h-7 w-7 sm:h-9 sm:w-9" />
         </div>
-        <nav className="flex flex-wrap items-center gap-1.5 text-sm sm:gap-3">
+        <nav className="flex flex-nowrap items-center gap-1 overflow-x-auto text-sm sm:gap-3">
           {email ? (
             <>
               <NavLink href="/analyzer">Analyzer</NavLink>
               <NavLink href="/app">Optimizer</NavLink>
-              <NavLink href="/builder">Résumé Studio</NavLink>
+              <NavLink href="/builder">
+                <span className="sm:hidden">Studio</span>
+                <span className="hidden sm:inline">Résumé Studio</span>
+              </NavLink>
               <span className="hidden max-w-[220px] truncate text-ink-500 lg:inline">{email}</span>
               <button
                 onClick={signOut}
-                className="btn-ghost whitespace-nowrap px-3 py-1.5 text-sm sm:px-4 sm:py-2"
+                className="btn-ghost whitespace-nowrap px-2.5 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm"
               >
                 Sign out
               </button>
@@ -72,13 +75,13 @@ export default function NavBar() {
             <>
               <Link
                 href="/login"
-                className="whitespace-nowrap px-2 py-1.5 font-semibold text-ink-700 hover:text-brand-600"
+                className="whitespace-nowrap px-2 py-1.5 text-xs font-semibold text-ink-700 hover:text-brand-600 sm:text-sm"
               >
                 Log in
               </Link>
               <Link
                 href="/signup"
-                className="btn-primary whitespace-nowrap px-3 py-1.5 text-sm sm:px-4 sm:py-2"
+                className="btn-primary whitespace-nowrap px-2.5 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm"
               >
                 Get started
               </Link>

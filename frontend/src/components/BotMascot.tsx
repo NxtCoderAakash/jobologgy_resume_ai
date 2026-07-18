@@ -9,7 +9,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 
-export default function BotMascot() {
+export default function BotMascot({ className = "h-10 w-10" }: { className?: string }) {
   const [active, setActive] = useState(false);
   const idle = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -41,7 +41,7 @@ export default function BotMascot() {
     <span
       aria-hidden
       title="Hi, I'm Yeti"
-      className="inline-block h-8 w-8 shrink-0 select-none sm:h-10 sm:w-10"
+      className={`inline-block shrink-0 select-none ${className}`}
       style={{
         opacity: active ? 1 : 0.9,
         transform: active ? "scale(1)" : "scale(0.95)",

@@ -14,6 +14,7 @@ import {
   handleDraftDelete,
 } from "./handlers/builder.js";
 import { handleAnalyzerScore } from "./handlers/analyzer.js";
+import { handleChat } from "./handlers/chat.js";
 import { sendJson, HttpError } from "./lib/http.js";
 
 export async function route(
@@ -26,7 +27,7 @@ export async function route(
 
   if (method === "GET" && (path === "/" || path === "/health")) {
     // `rev` bumps with notable backend changes so a deploy can be verified.
-    sendJson(res, 200, { ok: true, service: "jobologgy-backend", rev: "studio-creative-render" });
+    sendJson(res, 200, { ok: true, service: "jobologgy-backend", rev: "chat-coach" });
     return;
   }
 
@@ -49,6 +50,12 @@ export async function route(
   // ---- Résumé Analyzer (score-only) — additive route ----
   if (method === "POST" && path === "/api/analyzer/score") {
     await handleAnalyzerScore(req, res);
+    return;
+  }
+
+  // ---- Coach chatbot (streaming) — additive route ----
+  if (method === "POST" && path === "/api/chat") {
+    await handleChat(req, res);
     return;
   }
 

@@ -13,7 +13,7 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`rounded-lg px-3 py-1.5 font-semibold transition ${
+      className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 font-semibold transition sm:px-3 ${
         active
           ? "bg-brand-50 text-brand-700"
           : "text-ink-700 hover:bg-slate-100 hover:text-brand-600"
@@ -42,33 +42,45 @@ export default function NavBar() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/80 backdrop-blur">
-      <div className="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-12">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 sm:px-6 sm:py-4 lg:px-12">
         <div className="flex items-center gap-2">
-          <Link href="/" className="flex items-center gap-2 font-extrabold text-ink-900">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-white">
+          <Link
+            href="/"
+            className="flex items-center gap-2 whitespace-nowrap text-[15px] font-extrabold text-ink-900 sm:text-base"
+          >
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-brand-600 text-white sm:h-8 sm:w-8">
               ✦
             </span>
             Jobologyy<span className="text-brand-600">AI</span>
           </Link>
           <BotMascot />
         </div>
-        <nav className="flex items-center gap-3 text-sm">
+        <nav className="flex flex-wrap items-center gap-1.5 text-sm sm:gap-3">
           {email ? (
             <>
               <NavLink href="/analyzer">Analyzer</NavLink>
               <NavLink href="/app">Optimizer</NavLink>
               <NavLink href="/builder">Résumé Studio</NavLink>
-              <span className="hidden text-ink-500 sm:inline">{email}</span>
-              <button onClick={signOut} className="btn-ghost px-4 py-2">
+              <span className="hidden max-w-[220px] truncate text-ink-500 lg:inline">{email}</span>
+              <button
+                onClick={signOut}
+                className="btn-ghost whitespace-nowrap px-3 py-1.5 text-sm sm:px-4 sm:py-2"
+              >
                 Sign out
               </button>
             </>
           ) : (
             <>
-              <Link href="/login" className="font-semibold text-ink-700 hover:text-brand-600">
+              <Link
+                href="/login"
+                className="whitespace-nowrap px-2 py-1.5 font-semibold text-ink-700 hover:text-brand-600"
+              >
                 Log in
               </Link>
-              <Link href="/signup" className="btn-primary px-4 py-2">
+              <Link
+                href="/signup"
+                className="btn-primary whitespace-nowrap px-3 py-1.5 text-sm sm:px-4 sm:py-2"
+              >
                 Get started
               </Link>
             </>

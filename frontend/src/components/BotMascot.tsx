@@ -41,7 +41,7 @@ export default function BotMascot() {
     <span
       aria-hidden
       title="Hi, I'm Yeti"
-      className="inline-block h-10 w-10 shrink-0 select-none"
+      className="inline-block h-8 w-8 shrink-0 select-none sm:h-10 sm:w-10"
       style={{
         opacity: active ? 1 : 0.9,
         transform: active ? "scale(1)" : "scale(0.95)",

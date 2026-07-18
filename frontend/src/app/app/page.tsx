@@ -292,7 +292,7 @@ export default function WorkspacePage() {
     <main className="min-h-screen">
       <NavBar />
       <div className="px-4 py-10 sm:px-6 lg:px-12">
-        <h1 className="text-3xl font-extrabold text-ink-900">Résumé Optimizer</h1>
+        <h1 className="text-2xl font-extrabold text-ink-900 sm:text-3xl">Résumé Optimizer</h1>
         <p className="mt-1 text-ink-500">
           Upload your CV and a job description — get an ATS-optimized résumé, a before/after
           score, and a report of every improvement.

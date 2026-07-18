@@ -354,7 +354,7 @@ function Builder() {
       <main className="min-h-screen">
         <NavBar />
         <div className="px-4 py-10 sm:px-6 lg:px-12">
-          <h1 className="text-3xl font-extrabold text-ink-900">Résumé Studio</h1>
+          <h1 className="text-2xl font-extrabold text-ink-900 sm:text-3xl">Résumé Studio</h1>
           <p className="mt-1 text-ink-500">
             Build a polished, ATS-safe résumé section by section — with AI suggestions you
             review before applying.
@@ -566,7 +566,7 @@ function Builder() {
         </div>
 
         <div
-          className="grid gap-6 [grid-template-areas:'rail'_'form'_'preview'] md:grid-cols-[minmax(0,1fr)_minmax(0,400px)] md:[grid-template-areas:'rail_rail'_'form_preview'] lg:grid-cols-[210px_minmax(0,600px)_minmax(460px,1fr)] lg:[grid-template-areas:'rail_form_preview']"
+          className="grid grid-cols-1 gap-6 [grid-template-areas:'rail'_'form'_'preview'] md:grid-cols-[minmax(0,1fr)_minmax(0,400px)] md:[grid-template-areas:'rail_rail'_'form_preview'] lg:grid-cols-[210px_minmax(0,600px)_minmax(460px,1fr)] lg:[grid-template-areas:'rail_form_preview']"
         >
           <div className="[grid-area:rail]">
             <StepRail active={step} completed={validation.completed} onGo={setStep} />

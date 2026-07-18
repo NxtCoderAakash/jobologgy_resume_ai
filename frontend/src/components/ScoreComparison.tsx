@@ -15,7 +15,7 @@ export default function ScoreComparison({ analysis }: { analysis: Analysis }) {
   return (
     <div className="card">
       <h2 className="text-lg font-bold text-ink-900">ATS score</h2>
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-8">
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-4 sm:gap-8">
         <ScoreGauge value={analysis.atsScoreBefore} label="Before" />
         <div className="flex flex-col items-center text-ink-500">
           <span className="text-3xl">→</span>

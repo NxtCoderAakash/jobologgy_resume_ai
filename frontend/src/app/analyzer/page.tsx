@@ -153,7 +153,7 @@ export default function AnalyzerPage() {
     <main className="min-h-screen">
       <NavBar />
       <div className="px-4 py-10 sm:px-6 lg:px-12">
-        <h1 className="text-3xl font-extrabold text-ink-900">Résumé Analyzer</h1>
+        <h1 className="text-2xl font-extrabold text-ink-900 sm:text-3xl">Résumé Analyzer</h1>
         <p className="mt-1 text-ink-500">
           Check how well your résumé fits a job — get an ATS score, keyword match, and
           specific advice. Your résumé is scored as-is; nothing is rewritten or stored.

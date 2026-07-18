@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import BotMascot from "@/components/BotMascot";
+import Logo from "@/components/Logo";
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
   const pathname = usePathname();
@@ -48,9 +49,7 @@ export default function NavBar() {
             href="/"
             className="flex items-center gap-2 whitespace-nowrap text-[15px] font-extrabold text-ink-900 sm:text-base"
           >
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-brand-600 text-white sm:h-8 sm:w-8">
-              ✦
-            </span>
+            <Logo className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" />
             Jobologyy<span className="text-brand-600">AI</span>
           </Link>
           <BotMascot />

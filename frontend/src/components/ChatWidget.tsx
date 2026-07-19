@@ -121,6 +121,7 @@ function OptimizeCard({ r }: { r: OptimizeResult }) {
 export default function ChatWidget() {
   const [email, setEmail] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [intro, setIntro] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([{ role: "assistant", content: GREETING }]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -138,6 +139,7 @@ export default function ChatWidget() {
   const loadedRef = useRef(false);
   const contextSentRef = useRef(false);
   const prevLabelRef = useRef<string | null>(null);
+  const greetedRef = useRef(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
@@ -194,6 +196,40 @@ export default function ChatWidget() {
     sync();
     return subscribeChatContext(sync);
   }, []);
+
+  // Once per session after login: greet with the mascot "hi" intro, then open
+  // the chat by default. If the user closes it, it stays minimized to the
+  // bubble (we don't re-greet this session).
+  useEffect(() => {
+    if (!email || greetedRef.current || open) return;
+    let greeted = false;
+    try {
+      greeted = sessionStorage.getItem("jobologgy.chatGreeted") === "1";
+    } catch {
+      /* storage blocked */
+    }
+    if (greeted) return;
+    greetedRef.current = true;
+    try {
+      sessionStorage.setItem("jobologgy.chatGreeted", "1");
+    } catch {
+      /* ignore */
+    }
+
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setOpen(true);
+      return;
+    }
+    setIntro(true);
+    const t = setTimeout(() => {
+      setIntro(false);
+      setOpen(true);
+    }, 1700);
+    return () => clearTimeout(t);
+  }, [email, open]);
 
   useEffect(() => {
     if (open && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -515,7 +551,25 @@ export default function ChatWidget() {
 
   return (
     <>
-      {!open && (
+      {!open && intro && (
+        <div className="fixed bottom-4 right-4 z-50 flex items-end justify-end gap-2 sm:bottom-6 sm:right-6">
+          <div className="chat-hi-bubble mb-2 max-w-[220px] rounded-2xl rounded-br-md border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-ink-700 shadow-card">
+            Hi! 👋 I&apos;m your résumé coach.
+          </div>
+          <button
+            type="button"
+            aria-label="Open the résumé coach chat"
+            onClick={() => {
+              setIntro(false);
+              setOpen(true);
+            }}
+            className="chat-hi-pop inline-flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-card ring-1 ring-slate-200"
+          >
+            <BotMascot className="h-16 w-16" />
+          </button>
+        </div>
+      )}
+      {!open && !intro && (
         <button
           type="button"
           aria-label="Open the résumé coach chat"

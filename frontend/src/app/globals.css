@@ -77,10 +77,44 @@ body {
   transform-origin: center;
   animation: botBlink 4.5s ease-in-out infinite;
 }
+/* ---- ChatWidget "hi" intro (mascot pops bigger + speech bubble) ---- */
+@keyframes chatHiPop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.chat-hi-pop {
+  animation: chatHiPop 0.55s cubic-bezier(0.2, 0.7, 0.2, 1.2) both;
+}
+@keyframes chatHiBubble {
+  0% {
+    transform: translateY(8px) scale(0.85);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+.chat-hi-bubble {
+  animation: chatHiBubble 0.4s ease 0.2s both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bot-eyes,
   .scan-beam,
-  .scan-shimmer {
+  .scan-shimmer,
+  .chat-hi-pop,
+  .chat-hi-bubble {
     animation: none;
   }
 }

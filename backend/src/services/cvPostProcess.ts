@@ -95,7 +95,10 @@ export function composeCvText(cv: RewrittenCV): string {
   }
   if (cv.education.length) {
     lines.push("", "EDUCATION");
-    for (const e of cv.education) lines.push(`${e.degree}, ${e.institution} (${e.dates})`);
+    for (const e of cv.education) {
+      lines.push(`${e.degree}, ${e.institution} (${e.dates})`);
+      if (e.details) lines.push(e.details);
+    }
   }
   if (cv.projects?.length) {
     lines.push("", "PROJECTS");

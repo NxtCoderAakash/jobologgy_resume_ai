@@ -83,7 +83,13 @@ The overall atsScore should be roughly the weighted average of the four dimensio
 
 HARD RULES:
 - Judge only what is actually in the résumé; never assume unstated skills.
-- Be realistic and consistent: the dimension scores should support the overall score.`;
+- Be realistic and consistent: the dimension scores should support the overall score.
+- DATES & TENURE: use TODAY'S DATE given in the prompt as "now". Treat an end date of
+  "Present", "Current", "Now", "Ongoing", or a missing/blank end date as running up to today.
+  Compute years of experience and time-in-role by summing the actual date ranges — do NOT
+  assume a role is short just because its end date is open-ended or ongoing. Never lower the
+  score because of your own date-arithmetic; if a date is genuinely ambiguous, do not assume
+  the shorter interpretation.`;
 
 const SYSTEM_PROMPT = `You are an expert technical recruiter and ATS (Applicant Tracking System)
 specialist. You will receive a candidate's RÉSUMÉ text and a target JOB DESCRIPTION (JD).
@@ -120,9 +126,14 @@ export async function scoreResume(params: {
       `role: the skills, keywords, and expectations employers typically list for it. Use ` +
       `those market-standard keywords everywhere the schema refers to JD keywords. The same ` +
       `scoring calibration applies unchanged.`;
+  const today = new Date().toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
   return generateStructuredJson({
     systemPrompt: SYSTEM_PROMPT,
-    userPrompt: `RÉSUMÉ:\n"""\n${params.resumeText}\n"""\n\n${jdBlock}`,
+    userPrompt: `TODAY'S DATE: ${today}.\n\nRÉSUMÉ:\n"""\n${params.resumeText}\n"""\n\n${jdBlock}`,
     responseSchema,
     zodSchema: analyzerResultSchema,
     // Low temperature: scoring should be near-deterministic so the same résumé+JD

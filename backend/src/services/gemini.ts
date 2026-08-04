@@ -87,6 +87,9 @@ const responseSchema = {
               degree: { type: SchemaType.STRING },
               institution: { type: SchemaType.STRING },
               dates: { type: SchemaType.STRING },
+              // GPA, coursework, honors, minors, thesis — anything the original
+              // listed under this degree. Preserved here so it survives the rewrite.
+              details: { type: SchemaType.STRING },
             },
             required: ["degree", "institution", "dates"],
           },
@@ -170,7 +173,15 @@ HARD RULES — CONTENT INTEGRITY (these are non-negotiable; violating them harms
   strictly forbidden.
 - PRESERVE the candidate's real substantive content. Do not silently drop education details (GPA,
   coursework, honors), volunteer roles, projects, or certifications that were in the original. You may
-  reorder or tighten wording, but keep the information.
+  reorder or tighten wording, but keep the information. Put a degree's GPA, coursework, honors, minor,
+  or thesis into that education entry's "details" field so they are never lost in the rewrite.
+- CHANGE-LOG ACCURACY: the "improvements" list and "summaryOfChanges" MUST describe what you actually
+  did in "rewrittenCV". Never claim you kept, preserved, relabeled, or added a skill, tool, or section
+  that is not present in the final rewrittenCV. If you dropped something, either restore it or do not
+  claim you kept it — the change-log and the résumé must agree exactly.
+- DATES & TENURE: use TODAY'S DATE given in the prompt as "now". Treat "Present"/"Current"/ongoing or a
+  blank end date as running up to today when describing or scoring tenure; never under-count years of
+  experience because of a date-arithmetic mistake.
 
 HARD RULES — FORMAT:
 - Only introduce a JD keyword where it is genuinely supported by the candidate's real experience.
@@ -213,7 +224,12 @@ export async function analyzeAndRewrite(params: {
       `for that role: the skills, keywords, and expectations employers typically list for it. ` +
       `Use those market-standard keywords everywhere the schema refers to JD keywords. All ` +
       `HARD RULES still apply — never fabricate skills or metrics to fit the standard profile.`;
-  const userPrompt = `ORIGINAL RÉSUMÉ:\n"""\n${params.resumeText}\n"""\n\n${jdBlock}${atsLine}`;
+  const today = new Date().toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const userPrompt = `TODAY'S DATE: ${today}.\n\nORIGINAL RÉSUMÉ:\n"""\n${params.resumeText}\n"""\n\n${jdBlock}${atsLine}`;
 
   // Up to 3 attempts: retries transient overload (503) and parse/validation failures.
   let lastErr: unknown;

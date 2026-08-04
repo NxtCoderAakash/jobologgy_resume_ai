@@ -17,7 +17,7 @@ export interface RewrittenCV {
   summary: string;
   skills: string[];
   experience: { role: string; company: string; dates: string; bullets: string[] }[];
-  education: { degree: string; institution: string; dates: string }[];
+  education: { degree: string; institution: string; dates: string; details?: string }[];
   projects?: { name: string; description: string; bullets?: string[] }[];
   certifications?: string[];
 }

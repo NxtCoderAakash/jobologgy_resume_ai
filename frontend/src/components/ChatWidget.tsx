@@ -54,15 +54,70 @@ interface Msg extends ChatMessage {
 
 const storageKey = (email: string) => `jobologgy.chat.${email}`;
 
-/** Bold **text** and keep line breaks (whitespace-pre-wrap on the container). */
-function renderRich(text: string) {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((seg, i) =>
-    seg.startsWith("**") && seg.endsWith("**") ? (
-      <strong key={i}>{seg.slice(2, -2)}</strong>
-    ) : (
-      <span key={i}>{seg}</span>
-    ),
-  );
+/** Inline markdown: **bold**, *italic*, and `code`. Built as React elements
+ *  (no HTML injection), so the model's markdown never renders as literal symbols. */
+function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
+  const out: React.ReactNode[] = [];
+  const re = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*\n]+\*)/g;
+  let last = 0;
+  let i = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push(<span key={`${keyPrefix}-t${i}`}>{text.slice(last, m.index)}</span>);
+    const tok = m[0];
+    if (tok.startsWith("**")) {
+      out.push(<strong key={`${keyPrefix}-b${i}`}>{tok.slice(2, -2)}</strong>);
+    } else if (tok.startsWith("`")) {
+      out.push(
+        <code key={`${keyPrefix}-c${i}`} className="rounded bg-slate-100 px-1 py-0.5 text-[0.85em]">
+          {tok.slice(1, -1)}
+        </code>,
+      );
+    } else {
+      out.push(<em key={`${keyPrefix}-i${i}`}>{tok.slice(1, -1)}</em>);
+    }
+    last = m.index + tok.length;
+    i++;
+  }
+  if (last < text.length) out.push(<span key={`${keyPrefix}-t${i}`}>{text.slice(last)}</span>);
+  return out;
+}
+
+/** Block-level markdown: headers (#), bullets (- / *), numbered lists, blank-line
+ *  spacing, with inline formatting inside each line. Keeps replies readable
+ *  instead of showing raw ## and ** in the bubble. */
+function renderMarkdown(text: string): React.ReactNode[] {
+  return text.split("\n").map((line, idx) => {
+    const key = `l${idx}`;
+    const h = /^(#{1,6})\s+(.*)$/.exec(line);
+    if (h) {
+      return (
+        <div key={key} className={`mt-1.5 font-bold ${h[1].length <= 2 ? "text-[0.95rem]" : "text-sm"}`}>
+          {renderInline(h[2], key)}
+        </div>
+      );
+    }
+    const b = /^\s*[-*]\s+(.*)$/.exec(line);
+    if (b) {
+      return (
+        <div key={key} className="flex gap-1.5">
+          <span aria-hidden className="select-none">•</span>
+          <span className="min-w-0 flex-1">{renderInline(b[1], key)}</span>
+        </div>
+      );
+    }
+    const n = /^\s*(\d+)\.\s+(.*)$/.exec(line);
+    if (n) {
+      return (
+        <div key={key} className="flex gap-1.5">
+          <span aria-hidden className="select-none tabular-nums">{n[1]}.</span>
+          <span className="min-w-0 flex-1">{renderInline(n[2], key)}</span>
+        </div>
+      );
+    }
+    if (line.trim() === "") return <div key={key} className="h-2" aria-hidden />;
+    return <div key={key}>{renderInline(line, key)}</div>;
+  });
 }
 
 /** Vibrant three-dot typing/working indicator (reduced-motion friendly). */
@@ -647,7 +702,7 @@ export default function ChatWidget() {
                       <span className="text-xs text-ink-500">{m.working}</span>
                     </span>
                   ) : m.content ? (
-                    renderRich(m.content)
+                    m.role === "assistant" ? renderMarkdown(m.content) : m.content
                   ) : (
                     <span className="inline-flex items-center gap-1 py-1 align-middle">
                       <Dots />

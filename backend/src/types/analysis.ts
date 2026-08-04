@@ -33,6 +33,7 @@ export const rewrittenCvSchema = z.object({
       degree: z.string(),
       institution: z.string(),
       dates: z.string(),
+      details: z.string().optional(),
     }),
   ),
   projects: z

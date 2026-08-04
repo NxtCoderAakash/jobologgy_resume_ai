@@ -45,6 +45,7 @@ export function renderCvHtml(cv: RewrittenCV): string {
           <span class="entry-dates">${esc(e.dates)}</span>
         </div>
         <div class="entry-sub">${esc(e.institution)}</div>
+        ${e.details ? `<div class="entry-detail">${esc(e.details)}</div>` : ""}
       </div>`,
     )
     .join("");
@@ -110,6 +111,7 @@ export function renderCvHtml(cv: RewrittenCV): string {
   .entry-title { font-weight: 700; color: #111827; }
   .entry-dates { font-size: 9pt; color: #6b7280; white-space: nowrap; padding-left: 10px; }
   .entry-sub { font-size: 9.5pt; color: #374151; font-style: italic; margin-bottom: 3px; }
+  .entry-detail { font-size: 9.5pt; color: #374151; margin-bottom: 3px; }
   .entry-desc { font-size: 9.8pt; color: #374151; margin: 2px 0; }
   ul { margin: 4px 0 0; padding-left: 18px; }
   li { margin-bottom: 3px; break-inside: avoid; page-break-inside: avoid; }

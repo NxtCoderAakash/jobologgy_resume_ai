@@ -5,7 +5,8 @@ import ScoreGauge from "./ScoreGauge";
 
 export default function ScoreComparison({ analysis }: { analysis: Analysis }) {
   const delta = Math.round(analysis.atsScoreAfter - analysis.atsScoreBefore);
-  const gained = delta >= 0;
+  const improved = delta > 0;
+  const lowered = delta < 0;
   const dims: [string, { before: number; after: number }][] = [
     ["Keyword match", analysis.scoreBreakdown.keywordMatch],
     ["Relevance to JD", analysis.scoreBreakdown.relevanceToJD],
@@ -22,15 +23,35 @@ export default function ScoreComparison({ analysis }: { analysis: Analysis }) {
           <span className="text-3xl">→</span>
           <span
             className={`mt-2 rounded-full px-3 py-1 text-sm font-bold ${
-              gained ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+              improved
+                ? "bg-emerald-50 text-emerald-700"
+                : lowered
+                  ? "bg-amber-50 text-amber-700"
+                  : "bg-slate-100 text-ink-600"
             }`}
           >
-            {gained ? "+" : ""}
-            {delta} pts
+            {improved ? `+${delta} pts` : lowered ? `${delta} pts` : "No score change"}
           </span>
         </div>
         <ScoreGauge value={analysis.atsScoreAfter} label="After" emphasize />
       </div>
+
+      {!improved && (
+        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-semibold">
+            {lowered ? "Your score didn't go up — and that's honest." : "Your score held steady."}
+          </p>
+          <p className="mt-1 text-amber-800">
+            We never invent skills or metrics to inflate a résumé. This score reflects only what you can
+            actually back up in an interview{" "}
+            {lowered
+              ? "— so removing unverifiable claims can lower it slightly."
+              : "."}{" "}
+            Your résumé was still improved for ATS structure, wording, and keyword placement. To raise
+            the score for real, add any genuinely-missing skills below and re-run.
+          </p>
+        </div>
+      )}
 
       <div className="mt-8 space-y-3">
         {dims.map(([label, ba]) => (
@@ -39,7 +60,13 @@ export default function ScoreComparison({ analysis }: { analysis: Analysis }) {
               <span className="font-medium text-ink-700">{label}</span>
               <span className="text-ink-500">
                 {Math.round(ba.before)} →{" "}
-                <span className="font-bold text-emerald-600">{Math.round(ba.after)}</span>
+                <span
+                  className={`font-bold ${
+                    ba.after >= ba.before ? "text-emerald-600" : "text-amber-600"
+                  }`}
+                >
+                  {Math.round(ba.after)}
+                </span>
               </span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">

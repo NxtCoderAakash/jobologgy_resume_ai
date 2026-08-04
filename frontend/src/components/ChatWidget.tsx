@@ -134,17 +134,34 @@ function Dots() {
 /** Score + PDF download card rendered inside an assistant bubble. */
 function OptimizeCard({ r }: { r: OptimizeResult }) {
   const delta = r.after - r.before;
+  const improved = delta > 0;
+  const lowered = delta < 0;
   return (
     <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
       <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-ink-900">
         <span className="text-ink-500">{r.before}</span>
         <span aria-hidden>→</span>
-        <span className="text-emerald-600">{r.after}</span>
-        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
-          {delta >= 0 ? "+" : ""}
-          {delta} pts
+        <span className={improved ? "text-emerald-600" : lowered ? "text-amber-600" : "text-ink-700"}>
+          {r.after}
+        </span>
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs ${
+            improved
+              ? "bg-emerald-50 text-emerald-700"
+              : lowered
+                ? "bg-amber-50 text-amber-700"
+                : "bg-slate-100 text-ink-600"
+          }`}
+        >
+          {improved ? `+${delta} pts` : lowered ? `${delta} pts` : "No change"}
         </span>
       </div>
+      {!improved && (
+        <p className="mt-1.5 text-xs text-amber-800">
+          We didn&apos;t invent skills to inflate this — it&apos;s a score you can defend. Add any
+          genuinely-missing skills and re-run to raise it.
+        </p>
+      )}
       <div className="mt-2 flex flex-col gap-2">
         {r.cvUrl ? (
           <a

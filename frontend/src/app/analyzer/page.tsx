@@ -9,13 +9,15 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import { scoreResume } from "@/lib/analyzerApi";
+import { scoreResume, scoreResumeV2 } from "@/lib/analyzerApi";
 import { setHandoff } from "@/lib/handoff";
 import { setChatContext } from "@/lib/chatContext";
 import type { AnalyzerResult } from "@/types/analyzer";
+import type { ScanReport } from "@/types/scanReport";
 import NavBar from "@/components/NavBar";
 import FileDropzone from "@/components/FileDropzone";
 import AnalyzerReport from "@/components/AnalyzerReport";
+import ScanReportView from "@/components/ScanReportView";
 import LoadingProgress from "@/components/LoadingProgress";
 import ScanningPreview from "@/components/ScanningPreview";
 import NoJdDialog from "@/components/NoJdDialog";
@@ -43,6 +45,9 @@ export default function AnalyzerPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzerResult | null>(null);
+  // Opt-in V2 pillar engine (flag-gated): ?v2=1 or NEXT_PUBLIC_SCORING_V2=1.
+  const [v2Flag, setV2Flag] = useState(false);
+  const [reportV2, setReportV2] = useState<ScanReport | null>(null);
   // Holds the API response during the loader's completion animation.
   const [pending, setPending] = useState<AnalyzerResult | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -67,6 +72,16 @@ export default function AnalyzerPage() {
     );
   }, [usePaste, resumeText]);
   useEffect(() => () => setChatContext(null), []);
+
+  // Detect the opt-in V2 flag (query param or env).
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      setV2Flag(q.get("v2") === "1" || process.env.NEXT_PUBLIC_SCORING_V2 === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   // Route guard.
   useEffect(() => {
@@ -125,6 +140,19 @@ export default function AnalyzerPage() {
       if (!token) {
         setBusy(false);
         router.replace("/login");
+        return;
+      }
+      if (v2Flag) {
+        // Opt-in pillar engine: returns the structured ScanReport, rendered below.
+        const rep = await scoreResumeV2({
+          jobDescription,
+          file: usePaste ? null : file,
+          resumeText: usePaste ? resumeText : undefined,
+          token,
+          signal: controller.signal,
+        });
+        setReportV2(rep);
+        setBusy(false);
         return;
       }
       const res = await scoreResume({
@@ -304,6 +332,13 @@ export default function AnalyzerPage() {
             </div>
           )}
         </form>
+
+        {v2Flag && reportV2 && !busy && (
+          <div className="mt-12 scroll-mt-24">
+            <h2 className="mb-4 text-2xl font-extrabold text-ink-900">Your score</h2>
+            <ScanReportView report={reportV2} />
+          </div>
+        )}
 
         {result && (
           <div ref={resultRef} className="mt-12 scroll-mt-24">

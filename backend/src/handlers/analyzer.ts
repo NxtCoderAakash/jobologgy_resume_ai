@@ -8,6 +8,7 @@ import { parseMultipart } from "../lib/parseMultipart.js";
 import { sendJson, HttpError } from "../lib/http.js";
 import { extractResumeText } from "../services/extractText.js";
 import { scoreResume } from "../services/analyzerAi.js";
+import { analyzeResumeV2 } from "../services/scoring/analyzeV2.js";
 
 export async function handleAnalyzerScore(
   req: IncomingMessage,
@@ -32,6 +33,21 @@ export async function handleAnalyzerScore(
       422,
       "We couldn't read enough text from that file — try a clearer file or paste the text.",
     );
+  }
+
+  // Flag-gated V2 engine (pillars + gates + caps + 4-field report). Opt-in only;
+  // the live default below is unchanged. Enable per-request with engine=v2, or
+  // globally with SCORING_V2=1.
+  const useV2 = fields.engine === "v2" || process.env.SCORING_V2 === "1";
+  if (useV2) {
+    const report = await analyzeResumeV2({
+      file: file ? { buffer: file.buffer, mimeType: file.mimeType, filename: file.filename } : null,
+      pastedText: fields.resumeText,
+      jobDescription,
+      ocrText: resumeText,
+    });
+    sendJson(res, 200, { report, engine: "v2" });
+    return;
   }
 
   const result = await scoreResume({ resumeText, jobDescription });

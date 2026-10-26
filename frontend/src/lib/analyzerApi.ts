@@ -1,5 +1,6 @@
 /** API client for the Résumé Analyzer (score-only). */
 import type { AnalyzerResult } from "@/types/analyzer";
+import type { ScanReport } from "@/types/scanReport";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8787";
 
@@ -35,4 +36,41 @@ export async function scoreResume(args: {
 
   const data = await res.json();
   return data.result as AnalyzerResult;
+}
+
+/** V2 (pillar engine) analyzer — opt-in via engine=v2. Returns the structured
+ *  ScanReport (gates/caps + teaser + four-field deductions). */
+export async function scoreResumeV2(args: {
+  jobDescription: string;
+  file?: File | null;
+  resumeText?: string;
+  token: string;
+  signal?: AbortSignal;
+}): Promise<ScanReport> {
+  const form = new FormData();
+  form.append("engine", "v2");
+  form.append("jobDescription", args.jobDescription);
+  if (args.file) form.append("file", args.file);
+  if (args.resumeText) form.append("resumeText", args.resumeText);
+
+  const res = await fetch(`${BACKEND_URL}/api/analyzer/score`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${args.token}` },
+    body: form,
+    signal: args.signal,
+  });
+
+  if (!res.ok) {
+    let message = `Request failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.error) message = body.error;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(message);
+  }
+
+  const data = await res.json();
+  return data.report as ScanReport;
 }

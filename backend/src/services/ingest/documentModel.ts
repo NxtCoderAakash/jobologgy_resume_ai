@@ -42,6 +42,8 @@ export interface DocumentModel {
   hasTables: boolean;
   /** core content trapped in floating text boxes (Canva/Figma) — gate signal. */
   contentInTextBoxes: boolean;
+  /** white/tiny/off-canvas text or prompt-injection detected (excluded from scoring). */
+  hiddenText: boolean;
   contact: ContactFinding;
   imageCount: number;
   /** heuristic: a sizable image on page 1 (likely a profile photo). */

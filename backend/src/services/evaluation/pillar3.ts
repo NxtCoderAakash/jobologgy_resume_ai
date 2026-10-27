@@ -8,6 +8,7 @@
  * that flags buzzword filler — the real reason un-edited AI résumés get rejected.
  */
 import type { PillarInput, Component } from "../scoring/types.js";
+import type { Tier } from "./experienceTier.js";
 
 const FILLER = ["team player", "hard-working", "hardworking", "passionate", "go-getter", "detail-oriented", "results-driven", "synergy", "self-starter", "dynamic professional", "proven track record", "think outside the box"];
 const WEAK_OPENERS = ["responsible for", "worked on", "helped", "involved in", "duties included", "tasked with"];
@@ -20,13 +21,16 @@ function bullets(text: string): string[] {
     .filter((l) => l.length > 25); // sentence-like lines
 }
 
-export function assembleP3(resumeText: string, headings: string[]): { pillar: PillarInput; detail: Record<string, unknown> } {
+export function assembleP3(resumeText: string, headings: string[], tier: Tier = "early"): { pillar: PillarInput; detail: Record<string, unknown> } {
   const text = resumeText.toLowerCase();
   const bl = bullets(resumeText);
   const nBul = bl.length || 1;
 
   const quantified = bl.filter((b) => /\d/.test(b)).length;
   const quantRatio = quantified / nBul;
+  // Experience-tier modifier: expectations flex, weights unchanged. A fresher is
+  // not penalised for missing metrics; a mid/senior candidate is held stricter.
+  const quantMultiplier = tier === "fresher" ? 2.1 : tier === "mid" ? 1.2 : 1.4;
 
   const fillerHits = FILLER.filter((f) => text.includes(f)).length;
   const weakHits = bl.filter((b) => WEAK_OPENERS.some((w) => b.toLowerCase().startsWith(w))).length;
@@ -39,10 +43,11 @@ export function assembleP3(resumeText: string, headings: string[]): { pillar: Pi
   const coreHeadings = ["Experience", "Education", "Skills"].filter((h) => headings.includes(h)).length;
   const hasHeadline = /\n?[A-Za-z].{2,40}\n/.test(resumeText.slice(0, 120)) && !/seeking a (challenging|suitable) role/i.test(resumeText);
 
-  const impactWeak = quantified === 0 && fillerHits > 0; // generic, no numbers → reverse-mark
+  // A fresher with no metrics is not reverse-marked for it (projects count).
+  const impactWeak = quantified === 0 && fillerHits > 0 && tier !== "fresher";
 
   const components: Component[] = [
-    { id: "quantified_impact", label: "Quantified impact & outcomes", max: 30, earned: round1(30 * clamp01(quantRatio * 1.4)) },
+    { id: "quantified_impact", label: "Quantified impact & outcomes", max: 30, earned: round1(30 * clamp01(quantRatio * quantMultiplier)) },
     {
       id: "specific_content",
       label: "Specific, non-generic content",

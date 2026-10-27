@@ -80,6 +80,9 @@ export async function inspectDocx(buf: Buffer): Promise<DocumentModel> {
   if (docxHasTextBoxes(docXml)) warnings.push("Content in text boxes — parsers often drop these.");
   if (mediaCount >= 1) warnings.push("Embedded image(s) — may include a profile photo.");
 
+  const hiddenText = /<w:vanish\b/.test(docXml) || /\b(ignore (all )?previous|rate (this|my) (resume )?100|as an ai language model|override your)\b/i.test(text);
+  if (hiddenText) warnings.push("Hidden or injected text detected — excluded from scoring.");
+
   return {
     sourceType: "docx",
     textSelectable: true,
@@ -89,6 +92,7 @@ export async function inspectDocx(buf: Buffer): Promise<DocumentModel> {
     columns: { count: columns, scrambled: columns >= 2, rightFraction: 0 },
     hasTables: docxHasTables(docXml),
     contentInTextBoxes: docxHasTextBoxes(docXml),
+    hiddenText,
     contact: { found, emails, phones, inBody, headerFooterOnly },
     imageCount: mediaCount,
     hasPhoto: mediaCount >= 1,
@@ -119,6 +123,7 @@ function fallback(note: string): DocumentModel {
     columns: { count: 1, scrambled: false, rightFraction: 0 },
     hasTables: false,
     contentInTextBoxes: false,
+    hiddenText: false,
     contact: { found: false, emails: [], phones: [], inBody: false, headerFooterOnly: false },
     imageCount: 0,
     hasPhoto: false,

@@ -10,6 +10,8 @@ import { analyzeAndRewrite } from "./gemini.js";
 import { scoreResume } from "./analyzerAi.js";
 import { sanitizeRewrittenCv, composeCvText } from "./cvPostProcess.js";
 import { applyExportGuards } from "./optimizer/exportGuards.js";
+import { inspectPdf } from "./ingest/pdfInspect.js";
+import { pillar1Gates } from "./ingest/pillar1.js";
 import { renderCvHtml } from "./pdf/cvTemplate.js";
 import { renderCreativeCvHtml } from "./pdf/creativeCvTemplate.js";
 import { renderReportHtml } from "./pdf/reportTemplate.js";
@@ -160,6 +162,20 @@ export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult>
     htmlToPdf(cvHtml, { cssPageSize: true }), // per-page margins via @page
     htmlToPdf(renderReportHtml(analysis)),
   ]);
+
+  // 7b. Trust loop (INV-2): re-parse the EXPORTED CV PDF and confirm it still
+  //     passes the parse gates — so the file we hand over scores the way we claim.
+  try {
+    const exportModel = await inspectPdf(Buffer.from(cvPdf));
+    const failedGates = pillar1Gates(exportModel).filter((g) => !g.passed);
+    if (failedGates.length) {
+      analysis.summaryOfChanges +=
+        `\n\nHeads-up: the exported PDF tripped a parse check (${failedGates.map((g) => g.label).join(", ")}). ` +
+        `Prefer the standard, single-column template for the most reliable ATS parsing.`;
+    }
+  } catch {
+    /* re-validation is best-effort; never block the export on it */
+  }
 
   // 8. Persist (best-effort; returns null URLs if Supabase is unconfigured)
   const jobId = randomUUID();

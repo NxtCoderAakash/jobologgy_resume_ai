@@ -15,6 +15,7 @@ import { extractRequirements } from "../evaluation/jdExtract.js";
 import { jdConfidence } from "../evaluation/jdTiering.js";
 import { refineP3Specificity, createCache } from "../evaluation/aiRefine.js";
 import { createGeminiJudge } from "../evaluation/geminiJudge.js";
+import { detectTier } from "../evaluation/experienceTier.js";
 import { computeScore } from "./engine.js";
 import type { Mode, ScoreResult, PillarInput } from "./types.js";
 import type { DocumentModel } from "../ingest/documentModel.js";
@@ -75,7 +76,8 @@ export async function analyzeResumeV2(input: AnalyzeV2Input): Promise<ScanReport
 
   const gates = pillar1Gates(model);
   const p1 = pillar1Input(model);
-  const p3res = assembleP3(text, model.headings);
+  const tier = detectTier(text).tier;
+  const p3res = assembleP3(text, model.headings, tier);
 
   // Optional constrained-AI refinement of the subjective P3 specificity (off by
   // default; deterministic otherwise). Memoized → stable on re-scan.

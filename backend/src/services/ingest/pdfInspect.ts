@@ -150,6 +150,7 @@ export async function inspectPdf(buf: Buffer): Promise<DocumentModel> {
       .filter((v): v is number => typeof v === "number"),
   );
   const pages: PageModel[] = [];
+  let hiddenChars = 0;
 
   for (let p = 1; p <= doc.numPages; p++) {
     const page = await doc.getPage(p);
@@ -159,7 +160,13 @@ export async function inspectPdf(buf: Buffer): Promise<DocumentModel> {
     for (const item of content.items as Array<{ str: string; transform: number[]; width: number }>) {
       if (!("str" in item)) continue;
       const t = item.transform;
-      items.push({ str: item.str, x: t[4], y: t[5], w: item.width, size: Math.hypot(t[1], t[3]) || Math.abs(t[3]) || 10 });
+      const size = Math.hypot(t[1], t[3]) || Math.abs(t[3]) || 10;
+      // Hidden text: tiny (<3pt) or positioned off the page. Excluded from scoring.
+      if (size < 3 || t[4] < -5 || t[4] > vp.width + 5 || t[5] < -5 || t[5] > vp.height + 5) {
+        hiddenChars += item.str.trim().length;
+        continue;
+      }
+      items.push({ str: item.str, x: t[4], y: t[5], w: item.width, size });
     }
     let images = 0;
     try {
@@ -187,6 +194,22 @@ export async function inspectPdf(buf: Buffer): Promise<DocumentModel> {
   const columns = analyzeColumns(page1.items, page1.width, page1.height);
   const contact = analyzeContact(pages, text);
 
+  // Hidden text: tiny/off-canvas runs, or prompt-injection phrases in the visible text.
+  const injection = /\b(ignore (all )?previous|disregard (all )?previous|rate (this|me|my) (resume )?100|as an ai language model|you must (give|rate|score)|override your)\b/i.test(text);
+  const hiddenText = hiddenChars > 20 || injection;
+  if (hiddenText) warnings.push("Hidden or injected text detected — ignored and excluded from scoring.");
+
+  // Design-heavy / boxed layout: many distinct left-edges with real text (Canva/Figma).
+  const bodyItems = page1.items.filter((i) => i.str.trim().length > 2 && i.y > page1.height * 0.08 && i.y < page1.height * 0.92);
+  const leftBuckets = new Map<number, number>();
+  for (const i of bodyItems) {
+    const k = Math.round(i.x / 12) * 12;
+    leftBuckets.set(k, (leftBuckets.get(k) ?? 0) + i.str.trim().length);
+  }
+  const substantialLeftEdges = [...leftBuckets.values()].filter((n) => n > 15).length;
+  const contentInTextBoxes = substantialLeftEdges > 8;
+  if (contentInTextBoxes) warnings.push("Content is scattered across many blocks (design tool?) — parsers may drop or reorder it.");
+
   const maxSize = page1.items.reduce((m, i) => Math.max(m, i.size), 0);
   const nameItem = page1.items.find((i) => i.size === maxSize && i.str.trim().length > 1);
   const nameAtTop = !!nameItem && nameItem.y > page1.height * 0.82;
@@ -208,7 +231,8 @@ export async function inspectPdf(buf: Buffer): Promise<DocumentModel> {
     text,
     columns,
     hasTables: false,
-    contentInTextBoxes: false,
+    contentInTextBoxes,
+    hiddenText,
     contact,
     imageCount: pages.reduce((s, pg) => s + pg.images, 0),
     hasPhoto,
@@ -248,6 +272,7 @@ function scannedFallback(note: string): DocumentModel {
     columns: { count: 1, scrambled: false, rightFraction: 0 },
     hasTables: false,
     contentInTextBoxes: false,
+    hiddenText: false,
     contact: { found: false, emails: [], phones: [], inBody: false, headerFooterOnly: false },
     imageCount: 0,
     hasPhoto: false,

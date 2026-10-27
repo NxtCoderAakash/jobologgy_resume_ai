@@ -8,6 +8,7 @@ import { classifyEvidence, detectStuffing } from "./skillEvidence.js";
 import { classifyRequirement, jdConfidence, type TieredRequirement } from "./jdTiering.js";
 import { assembleP2 } from "./pillar2.js";
 import { assembleP3 } from "./pillar3.js";
+import { detectTier } from "./experienceTier.js";
 import { computeScore } from "../scoring/engine.js";
 
 let passed = 0, failed = 0;
@@ -102,6 +103,22 @@ const full = computeScore({
 check("end-to-end JD score in sane band", full.finalScore > 40 && full.finalScore <= 90, `score=${full.finalScore}`);
 check("end-to-end retains raw + final", full.rawScore > 0 && full.finalScore <= full.ceiling);
 console.log(`     (illustrative JD score: ${full.finalScore}, raw ${full.rawScore})`);
+
+// ---- experience-tier modifier ----
+console.log("\n[experience tier]");
+const fresherCv = "Summary\nCS student seeking SWE roles.\nExperience\nIntern, Acme (Jun 2024 - Aug 2024)\nBuilt a feature and worked with the team.\nProjects\nBuilt a todo app in React.\nEducation\nB.Tech 2021-2025";
+const seniorCv = "Experience\nSenior PM, TechCorp (Jan 2016 - Present)\nLed a 12-person team and grew revenue 40%.\nProduct Manager, Acme (Jan 2013 - Dec 2016)\nShipped five products.";
+check("fresher detected", detectTier(fresherCv, new Date("2025-01-01")).tier === "fresher", detectTier(fresherCv, new Date("2025-01-01")).tier);
+check("mid/senior detected", detectTier(seniorCv, new Date("2026-01-01")).tier === "mid", detectTier(seniorCv, new Date("2026-01-01")).tier);
+const partial = "Experience\nIntern, Acme (2024)\nFixed 15 bugs in the login flow during the internship.\nWorked with the team on internal documentation tasks.\nSkills\nJava";
+const asFresher = assembleP3(partial, ["Experience"], "fresher");
+const asMid = assembleP3(partial, ["Experience"], "mid");
+const fQ = asFresher.pillar.components.find((c) => c.id === "quantified_impact")!.earned;
+const mQ = asMid.pillar.components.find((c) => c.id === "quantified_impact")!.earned;
+check("fresher impact scored more leniently than mid", fQ > mQ, `fresher=${fQ} mid=${mQ}`);
+const genericCv = "Experience\nResponsible for testing the app. A passionate, hard-working team player.";
+check("mid: all-generic Experience is reverse-mark eligible", assembleP3(genericCv, ["Experience"], "mid").pillar.components.find((c) => c.id === "specific_content")!.meetsMinimum === false);
+check("fresher: all-generic Experience NOT reverse-marked", assembleP3(genericCv, ["Experience"], "fresher").pillar.components.find((c) => c.id === "specific_content")!.meetsMinimum !== false);
 
 console.log(`\n${failed === 0 ? "ALL GREEN" : "FAILURES"} — ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

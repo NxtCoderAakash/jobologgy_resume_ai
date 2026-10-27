@@ -5,6 +5,8 @@
  */
 import puppeteer from "puppeteer";
 import { analyzeResumeV2 } from "./analyzeV2.js";
+import { validateExportedPdf } from "../optimizer/exportValidator.js";
+import type { PillarInput } from "./types.js";
 
 let passed = 0, failed = 0;
 function check(name: string, cond: boolean, detail = ""): void {
@@ -72,6 +74,21 @@ async function main() {
     check("nudge to run a JD scan", rep.teaser.nudges.some((n) => /JD-specific scan/i.test(n)));
     check("general ceiling 95", rep.ceiling === 95);
     console.log(`     score=${rep.score} (${rep.band})`);
+  }
+
+  // 4) export validator (INV-2): re-parse the exported PDF and confirm it re-scores
+  {
+    const fullP3: PillarInput = { id: "P3", components: [{ id: "p3", label: "p3", max: 100, earned: 100 }] };
+    const cleanPdf = await render(BODY);
+    const okRes = await validateExportedPdf({ pdfBuffer: cleanPdf, mode: "general", draftP3: fullP3, draftScore: 95 });
+    console.log("\n[4] export validator");
+    check("clean export re-scores to the draft (ok)", okRes.ok === true, JSON.stringify(okRes));
+    check("clean export not gate-regressed", okRes.gateRegressed === false);
+
+    const twoColPdf = await render("", true);
+    const badRes = await validateExportedPdf({ pdfBuffer: twoColPdf, mode: "general", draftP3: fullP3, draftScore: 80 });
+    check("two-column export flagged (gate regressed)", badRes.gateRegressed === true && badRes.ok === false, JSON.stringify(badRes));
+    check("validator reports a parse-safe fix", /parse|template/i.test(badRes.message));
   }
 
   await browser.close();

@@ -67,6 +67,15 @@ export function pillar1Input(model: DocumentModel): PillarInput {
       fix: "Remove the photo; keep it on LinkedIn instead.",
     });
   }
+  if (model.hiddenText) {
+    penalties.push({
+      id: "hidden_text",
+      label: "Hidden or injected text detected",
+      points: 10,
+      why: "Invisible keywords or instructions read as dishonest — real ATS and recruiters flag and reject them.",
+      fix: "Remove any white, tiny, off-page, or hidden text; put real skills in visible content.",
+    });
+  }
 
   return { id: "P1", components, penalties };
 }

@@ -40,12 +40,42 @@ Legend: ✅ pass · ⚠️ gap (now fixed) · 🔶 inconclusive (fixture limitat
 - **Live re-verification of G1–G5 is pending a deploy.**
 
 ## Part 1 tally
-8 clean passes · 6 gaps found & fixed (G1–G5) · 1 inconclusive (needs a real DOCX-header fixture for 09).
-Honest core (gate-cap + dual display, determinism trap, injection defense, multi-doc, photo) all solid.
+8 clean passes · 6 gaps found & fixed (G1–G6) · all deployed & re-verified live.
+
+## Live re-verification after deploy (rev pillar-engine-v9 / v10)
+- **G1** ✅ password PDF → "This PDF is password-protected…"; corrupt PDF → "We couldn't open this PDF — it may be corrupted…"
+- **G2** ✅ essay → "This doesn't look like a résumé — it reads more like a letter or article…"
+- **G3** ✅ no-headings → Parse-ability finding "Standard section headings … −30" now shown (was orphan)
+- **G4** ✅ Readability findings now carry distinct specific copy (verbs vs length), no generic "6-second skim"
+- **G5** ✅ creative headings recognised → Parse-ability 80→100, score 74→88
+- **G6** (date-range-as-phone) — fixed + deployed (rev v10); 09b DOCX-header re-test pending the v10 build
+
+## 09 resolved
+The contact-in-body gate logic is correct (docxInspect separates header/footer). The gate spuriously
+passed because the phone regex matched the body date range "2013 - 2017" (8 digits). Fixed by
+`looksLikePhone()` (≥10 digits) across PDF/DOCX/text inspectors (G6).
+
+## Part 2 — JD mode (core done)
+- ✅ Three-pillar JD composition live (JD-Specific 77: Parse 100 / JD relevance 68 / Readability 65).
+- ✅ Tiering + evidence taxonomy: Missing must **aws −20** > weakly-evidenced strong **kubernetes (listed) −7**
+  > missing good **graphql −7**; SQL satisfied by PostgreSQL (equivalent, no deduction); Node.js
+  demonstrated (no deduction); Docker bonus (no deduction).
+
+## Part 2 — thin JD (D4 / INV-6)
+- ✅ Honest advisories shown: "The job description was thin, so JD match is advisory, not a confident
+  score" + "This job description is very short — the match is advisory". JD relevance 0/100.
+- ⚠️ **G7 (candidate finding, design decision):** the headline still folds the advisory-only JD-relevance
+  (0) into the weighted score → "JD-Specific 55/100 Needs work" when the résumé alone is ~85. A thin JD
+  the *candidate pasted* shouldn't depress their score (plan D4: "no numeric match score, advisory only";
+  C10: JD quality ≠ résumé quality). Proposed fix: when `advisoryOnly`, score P1+P3 (General composition)
+  and present JD match as advisory, instead of weighting P2=0 into the number. Touches the honest-score
+  contract → flagged for a decision rather than auto-changed.
+
+## 09 — RESOLVED ✅
+DOCX header-only contact now caps at 60 ("Underlying quality 86.3 — capped by a parse issue",
+Parse-ability 1 critical) after the G6 phone-vs-date fix. Contact-in-body gate fires correctly.
 
 ## Still to test
-- **Part 2** — JD mode: tiering (must vs preferred), skill evidence (exact/equivalent/related/
-  listed-not-evidenced/non-ownership), anti-stuffing, thin/empty JD advisory, conflicting JD,
-  multi-role JD, illegal/discriminatory clauses.
+- **Part 2 remainder** — conflicting JD (junior+10y), multi-role JD, visible keyword-stuffing
+  anti-inflation (illegal-clause + injection confirmed earlier in the session).
 - **Part 3** — Optimizer/fabrication, export re-score, trust invariants.
-- Re-verify G1–G5 live after deploy; craft a DOCX-header fixture for 09.

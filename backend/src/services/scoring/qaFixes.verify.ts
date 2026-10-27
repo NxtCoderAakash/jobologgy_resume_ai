@@ -69,6 +69,33 @@ async function main() {
   check("their 'why' lines are not all identical", uniqueWhy.size >= 2 || read.length < 2);
   check("no readability finding uses the old generic line", !read.some((d) => /6-second skim/.test(d.why) && /Add quantified, specific detail and strong action verbs/.test(d.fix)) || read.every((d) => d.why === read[0].why) === false, JSON.stringify([...uniqueWhy]));
 
+  // G7 — a thin JD must not drag a strong résumé's score (advisory only)
+  console.log("\n[G7 thin JD doesn't penalise the résumé]");
+  const STRONG = `PRIYA SHARMA
+Pune, India | priya.sharma@example.com | +91 98200 11223
+
+PROFESSIONAL SUMMARY
+Backend developer with 4 years building payment and API systems.
+
+SKILLS
+Node.js, PostgreSQL, Redis, Docker, Jest
+
+EXPERIENCE
+Software Engineer — Fintech Solutions Pvt Ltd
+Jun 2021 – Present
+- Built REST APIs in Node.js handling 2M requests/day at 99.9% uptime.
+- Designed PostgreSQL schemas and optimized queries, cutting latency 35%.
+
+EDUCATION
+B.Tech, Computer Science — University of Pune
+2013 – 2017`;
+  const strongJd = await analyzeResumeV2({ pastedText: STRONG, jobDescription: "Looking for a backend developer to join our team." });
+  check("thin JD → scored as general composition (not dragged by P2=0)", strongJd.mode === "general", strongJd.mode);
+  check("thin JD → no JD-relevance pillar in the score", !strongJd.pillars.some((p) => p.id === "P2"), JSON.stringify(strongJd.pillars.map((p) => p.id)));
+  check("thin JD → strong résumé keeps a high score (>75)", strongJd.score > 75, `${strongJd.score}`);
+  check("thin JD → advisory explains the match is not confident", strongJd.full.advisory.some((a) => /thin|short|advisory/i.test(a)), JSON.stringify(strongJd.full.advisory));
+  check("thin JD → no 'Missing must' deductions surfaced", !strongJd.full.deductions.some((d) => /missing must/i.test(d.finding)));
+
   console.log(`\n${failed === 0 ? "ALL GREEN" : "FAILURES"} — ${passed} passed, ${failed} failed`);
   process.exit(failed > 0 ? 1 : 0);
 }

@@ -137,19 +137,28 @@ export async function analyzeResumeV2(input: AnalyzeV2Input): Promise<ScanReport
 
   let p2detail: ReturnType<typeof assembleP2>["detail"] = [];
   let advisoryOnly = false;
-  const pillars: PillarInput[] = [p1];
+  let p2pillar: PillarInput | null = null;
   if (mode === "jd") {
     const ex = extractRequirements(jd);
     const conf = jdConfidence(ex.requirements.length, ex.jdTokenCount);
     const p2 = assembleP2(ex.requirements, text, conf);
     p2detail = p2.detail;
     advisoryOnly = p2.advisoryOnly;
-    pillars.push(p2.pillar);
+    p2pillar = p2.pillar;
   }
+
+  // When the JD is too thin to score confidently (advisoryOnly), DON'T let a 0
+  // JD-relevance drag the headline down — score résumé quality (P1+P3, General
+  // composition) and present the JD match as advisory only (plan D4 / C10: a thin
+  // JD the candidate pasted must not penalise their résumé).
+  const scoreAsJd = mode === "jd" && !advisoryOnly;
+  const effectiveMode: Mode = scoreAsJd ? "jd" : "general";
+  const pillars: PillarInput[] = [p1];
+  if (scoreAsJd && p2pillar) pillars.push(p2pillar);
   pillars.push(p3res.pillar);
 
-  const result = computeScore({ mode, gates, pillars });
-  const report = buildReport(result, model, gates, p1, p2detail, p3res.pillar, advisoryOnly, mode);
+  const result = computeScore({ mode: effectiveMode, gates, pillars });
+  const report = buildReport(result, model, gates, p1, p2detail, p3res.pillar, advisoryOnly, effectiveMode);
 
   // Deterministic edge-case advisories: multi-column, multi-doc, timeline, JD interpretation, language.
   if (model.columns.count >= 2 && !report.full.deductions.some((d) => d.finding.includes("reading order"))) {
@@ -197,8 +206,10 @@ function buildReport(
       deductions.push({ pillar: "Parse-ability", finding: c.label, marksLost: `−${Math.round(c.max - c.earned)}`, why: copy.why, fix: copy.fix });
     }
   }
-  // P2 weak / missing requirements.
-  for (const d of p2detail) {
+  // P2 weak / missing requirements — only when the JD was strong enough to score.
+  // When advisory-only (thin JD), these are not surfaced as deductions and don't
+  // affect the number; the JD-thin advisory explains the match is advisory.
+  if (!advisoryOnly) for (const d of p2detail) {
     if (d.tier === "bonus") continue;
     if (d.earned < d.max * 0.6) {
       const missing = d.evidence === "missing" || d.evidence === "negated";

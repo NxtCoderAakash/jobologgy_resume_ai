@@ -9,6 +9,7 @@ import { extractResumeText } from "./extractText.js";
 import { analyzeAndRewrite } from "./gemini.js";
 import { scoreResume } from "./analyzerAi.js";
 import { sanitizeRewrittenCv, composeCvText } from "./cvPostProcess.js";
+import { applyExportGuards } from "./optimizer/exportGuards.js";
 import { renderCvHtml } from "./pdf/cvTemplate.js";
 import { renderCreativeCvHtml } from "./pdf/creativeCvTemplate.js";
 import { renderReportHtml } from "./pdf/reportTemplate.js";
@@ -109,13 +110,16 @@ export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult>
     analysis.rewrittenCV,
     augmentedText,
   );
-  analysis.rewrittenCV = sanitizedCv;
+  // 3b. Honest export pass: sanitize wording (ban em-dashes / AI buzzwords / smart
+  //     quotes / invisible chars) and flag any number we can't trace to the source.
+  const { cv: guardedCv, warnings: exportWarnings } = applyExportGuards(sanitizedCv, augmentedText);
+  analysis.rewrittenCV = guardedCv;
 
-  // 4. Score the FINAL (sanitized) rewrite ON ITS OWN with the same canonical engine.
+  // 4. Score the FINAL (guarded) rewrite ON ITS OWN with the same canonical engine.
   //    Scoring it solo (not alongside the original) is what makes the "after" match
   //    an independent re-check in the standalone Analyzer — no comparison inflation.
   const afterScore = await scoreResume({
-    resumeText: composeCvText(sanitizedCv),
+    resumeText: composeCvText(guardedCv),
     jobDescription,
   });
 
@@ -140,6 +144,10 @@ export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult>
     analysis.summaryOfChanges +=
       `\n\nNo job description was provided, so this résumé was scored against the ` +
       `market-standard job profile for your current role and commonly expected keywords.`;
+  }
+
+  if (exportWarnings.length) {
+    analysis.summaryOfChanges += `\n\n${exportWarnings.join(" ")}`;
   }
 
   // 7. Render both PDFs (in parallel). The CV uses the user's chosen style; the

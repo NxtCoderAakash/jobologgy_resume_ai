@@ -10,6 +10,7 @@
  * Gemini implementation plugs in without changing callers.
  */
 import { createHash } from "node:crypto";
+import type { PillarInput } from "../scoring/types.js";
 
 export interface AiJudge {
   /** rate a bullet's specificity/impact in [0,1]; must be low-temp + rubric-bound. */
@@ -45,3 +46,15 @@ export async function specificity(bullet: string, judge: AiJudge | null, cache: 
 }
 
 const clamp01 = (n: number): number => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
+
+/** Refine a P3 pillar's "specific_content" earned using the AI judge's average
+ *  specificity over the résumé's bullets (memoized → stable on re-scan). Mutates
+ *  the pillar in place. No-op when there are no bullets. */
+export async function refineP3Specificity(pillar: PillarInput, bullets: string[], judge: AiJudge | null, cache: RefineCache): Promise<void> {
+  if (!bullets.length) return;
+  let sum = 0;
+  for (const b of bullets) sum += await specificity(b, judge, cache);
+  const avg = sum / bullets.length;
+  const comp = pillar.components.find((c) => c.id === "specific_content");
+  if (comp) comp.earned = Math.round(comp.max * avg);
+}

@@ -8,6 +8,9 @@ import { checkProvenance } from "./provenance.js";
 import { fixTasksFromReport } from "./fixTasks.js";
 import { specificity, createCache, type AiJudge } from "../evaluation/aiRefine.js";
 import { analyzeResumeV2, type ScanReport } from "../scoring/analyzeV2.js";
+import { applyExportGuards } from "./exportGuards.js";
+import { gateReport } from "../entitlement.js";
+import type { RewrittenCV } from "../../types/analysis.js";
 
 let passed = 0, failed = 0;
 function check(name: string, cond: boolean, detail = ""): void {
@@ -78,6 +81,42 @@ async function main() {
   const fb1 = await specificity("Reduced defects by 30% across 3 releases", null, createCache());
   const fb2 = await specificity("Reduced defects by 30% across 3 releases", null, createCache());
   check("deterministic fallback stable", fb1 === fb2 && fb1 > 0.5);
+
+  const { refineP3Specificity } = await import("../evaluation/aiRefine.js");
+  const p3pillar = { id: "P3" as const, components: [{ id: "specific_content", label: "x", max: 20, earned: 20 }] };
+  const half: AiJudge = { rate: async () => 0.5 };
+  await refineP3Specificity(p3pillar, ["Wrote some tests for the app"], half, createCache());
+  check("refineP3Specificity applies judge (20→10)", p3pillar.components[0].earned === 10, `got ${p3pillar.components[0].earned}`);
+
+  // ---- export guards (live wiring helper) ----
+  console.log("\n[export guards]");
+  const cv: RewrittenCV = {
+    fullName: "Ankit Verma",
+    title: "QA Engineer",
+    contact: { email: "ankit@example.com" },
+    summary: "Spearheaded a seamless rollout—leveraging robust tooling.",
+    skills: ["Selenium", "Postman"],
+    experience: [{ role: "QA Analyst", company: "BrightApps", dates: "Jun 2021 - Present", bullets: ["Logged 200 defects, cut bugs by 30%", "Improved uptime to 99.99%"] }],
+    education: [{ degree: "B.Tech", institution: "Pune", dates: "2017-2021" }],
+  };
+  const guarded = applyExportGuards(cv, "Tested a web app, logged 200 defects, cut bugs by 30%. Skills: Selenium, Postman.");
+  check("buzzwords/em-dash cleaned in summary", !/[–—]|spearheaded|seamless|leveraging|robust/i.test(guarded.cv.summary));
+  check("real numbers (200, 30) not flagged", !guarded.warnings.join(" ").includes("200"));
+  check("invented number (99.99) flagged", guarded.warnings.some((w) => w.includes("99")));
+
+  // ---- entitlement gate (INV-8) ----
+  console.log("\n[entitlement gate]");
+  const sample: ScanReport = {
+    mode: "jd", score: 72, rawScore: 72, band: "Fair", ceiling: 90, anyGateFailed: false, gateCapped: false, pillars: [{ id: "P1", score: 100, weight: 0.3 }],
+    teaser: { score: 72, band: "Fair", mode: "jd", byPillar: [{ pillar: "JD relevance", issues: 3, critical: 0 }], nudges: ["Unlock the full report + fixes"] },
+    full: { deductions: [{ pillar: "JD relevance", finding: "Missing must: Jenkins", marksLost: "−12", why: "x", fix: "y" }], advisory: [] },
+    meta: { configVersion: "v", sourceType: "pdf", extractionConfidence: "HIGH", advisoryOnly: false, warnings: [] },
+  };
+  const free = gateReport(sample, false);
+  const paid = gateReport(sample, true);
+  check("free payload OMITS full deductions", free.full === undefined && JSON.stringify(free).indexOf("Jenkins") === -1);
+  check("free payload keeps teaser + score", free.teaser.byPillar.length === 1 && free.score === 72);
+  check("paid payload includes full deductions", !!paid.full && paid.full.deductions.length === 1);
 
   console.log(`\n${failed === 0 ? "ALL GREEN" : "FAILURES"} — ${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);

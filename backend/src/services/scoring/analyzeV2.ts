@@ -13,6 +13,8 @@ import { assembleP2 } from "../evaluation/pillar2.js";
 import { assembleP3 } from "../evaluation/pillar3.js";
 import { extractRequirements } from "../evaluation/jdExtract.js";
 import { jdConfidence } from "../evaluation/jdTiering.js";
+import { refineP3Specificity, createCache } from "../evaluation/aiRefine.js";
+import { createGeminiJudge } from "../evaluation/geminiJudge.js";
 import { computeScore } from "./engine.js";
 import type { Mode, ScoreResult, PillarInput } from "./types.js";
 import type { DocumentModel } from "../ingest/documentModel.js";
@@ -46,6 +48,8 @@ export interface AnalyzeV2Input {
   jobDescription: string;
   /** text the caller already extracted (e.g. OCR), used when the file has no text layer. */
   ocrText?: string;
+  /** opt-in: refine P3 specificity with the constrained Gemini judge (needs a key). */
+  aiRefine?: boolean;
 }
 
 const GATE_COPY: Record<string, { why: string; fix: string }> = {
@@ -72,6 +76,13 @@ export async function analyzeResumeV2(input: AnalyzeV2Input): Promise<ScanReport
   const gates = pillar1Gates(model);
   const p1 = pillar1Input(model);
   const p3res = assembleP3(text, model.headings);
+
+  // Optional constrained-AI refinement of the subjective P3 specificity (off by
+  // default; deterministic otherwise). Memoized → stable on re-scan.
+  if (input.aiRefine && process.env.GEMINI_API_KEY) {
+    const bl = text.split(/\n/).map((s) => s.trim()).filter((s) => s.length > 25).slice(0, 12);
+    await refineP3Specificity(p3res.pillar, bl, createGeminiJudge(), createCache());
+  }
 
   let p2detail: ReturnType<typeof assembleP2>["detail"] = [];
   let advisoryOnly = false;

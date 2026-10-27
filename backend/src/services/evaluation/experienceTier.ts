@@ -29,9 +29,13 @@ function estimateYears(text: string, now = new Date()): number {
   let earliest = Infinity;
   let latest = -Infinity;
   for (const m of ranges) {
-    // skip ranges whose nearby context is a degree/education entry (not work).
-    const ctx = t.slice(Math.max(0, (m.index ?? 0) - 60), m.index ?? 0);
-    if (EDU.test(ctx)) continue;
+    // Skip education spans: an Education heading is the nearest section above, or
+    // the same line names a degree.
+    const idx = m.index ?? 0;
+    const before = t.slice(0, idx);
+    const lastEdu = Math.max(before.lastIndexOf("education"), before.lastIndexOf("academic"));
+    const lastExp = Math.max(before.lastIndexOf("experience"), before.lastIndexOf("employment"));
+    if (lastEdu > lastExp || EDU.test(t.slice(before.lastIndexOf("\n") + 1, idx))) continue;
     const sMonth = m[1] ? (MONTHS[m[1].slice(0, 3)] ?? 0) : 0;
     const sYear = parseInt(m[2], 10);
     const startVal = sYear + sMonth / 12;

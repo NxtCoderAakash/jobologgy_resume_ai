@@ -16,6 +16,9 @@ import { jdConfidence } from "../evaluation/jdTiering.js";
 import { refineP3Specificity, createCache } from "../evaluation/aiRefine.js";
 import { createGeminiJudge } from "../evaluation/geminiJudge.js";
 import { detectTier } from "../evaluation/experienceTier.js";
+import { analyzeJd } from "../evaluation/jdAnalyze.js";
+import { analyzeTimeline } from "../ingest/sections.js";
+import { detectMultipleDocs } from "../optimizer/generalGuard.js";
 import { computeScore } from "./engine.js";
 import type { Mode, ScoreResult, PillarInput } from "./types.js";
 import type { DocumentModel } from "../ingest/documentModel.js";
@@ -100,7 +103,19 @@ export async function analyzeResumeV2(input: AnalyzeV2Input): Promise<ScanReport
   pillars.push(p3res.pillar);
 
   const result = computeScore({ mode, gates, pillars });
-  return buildReport(result, model, gates, p1, p2detail, p3res.pillar, advisoryOnly, mode);
+  const report = buildReport(result, model, gates, p1, p2detail, p3res.pillar, advisoryOnly, mode);
+
+  // Deterministic edge-case advisories: multi-doc, timeline, JD interpretation, language.
+  const md = detectMultipleDocs(text);
+  if (md.advisory) report.full.advisory.push(md.advisory);
+  report.full.advisory.push(...analyzeTimeline(text).advisories);
+  if (mode === "jd") report.full.advisory.push(...analyzeJd(jd).advisories);
+  const letters = text.replace(/[^\p{L}]/gu, "").length;
+  const latin = text.replace(/[^A-Za-z]/g, "").length;
+  if (letters > 20 && latin / letters < 0.6) {
+    report.full.advisory.push("This résumé looks largely non-English — structure was checked, but wording and impact may be unreliable.");
+  }
+  return report;
 }
 
 function buildReport(

@@ -61,12 +61,12 @@ export interface DocumentModel {
 
 /** Versioned alias dictionary for canonical section headings (plan §D★ Part 1.3). */
 export const HEADING_ALIASES: Record<string, string[]> = {
-  Experience: ["experience", "work experience", "employment", "employment history", "professional experience", "work history", "career history"],
-  Education: ["education", "academic background", "qualifications", "academics"],
-  Skills: ["skills", "technical skills", "core competencies", "key skills", "technologies", "technical proficiencies"],
-  Projects: ["projects", "personal projects", "key projects", "academic projects"],
-  Summary: ["summary", "professional summary", "profile", "objective", "about me", "career objective"],
-  Certifications: ["certifications", "certificates", "licenses"],
+  Experience: ["experience", "work experience", "employment", "employment history", "professional experience", "work history", "career history", "where i have worked", "where i've worked", "my journey", "professional journey", "my experience"],
+  Education: ["education", "academic background", "qualifications", "academics", "my education"],
+  Skills: ["skills", "technical skills", "core competencies", "key skills", "technologies", "technical proficiencies", "technical arsenal", "tech stack", "technical toolkit", "skills & tools", "expertise"],
+  Projects: ["projects", "personal projects", "key projects", "academic projects", "selected projects", "notable projects"],
+  Summary: ["summary", "professional summary", "profile", "objective", "about me", "career objective", "who i am", "about"],
+  Certifications: ["certifications", "certificates", "licenses", "licenses & certifications"],
 };
 
 export function canonicalHeading(line: string): string | null {

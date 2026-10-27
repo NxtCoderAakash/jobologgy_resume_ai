@@ -20,6 +20,7 @@ import { analyzeJd } from "../evaluation/jdAnalyze.js";
 import { analyzeTimeline } from "../ingest/sections.js";
 import { detectMultipleDocs } from "../optimizer/generalGuard.js";
 import { computeScore } from "./engine.js";
+import { HttpError } from "../../lib/http.js";
 import type { Mode, ScoreResult, PillarInput } from "./types.js";
 import type { DocumentModel } from "../ingest/documentModel.js";
 
@@ -63,6 +64,27 @@ const GATE_COPY: Record<string, { why: string; fix: string }> = {
   contact_in_body: { why: "Email/phone only in the header/footer region is frequently skipped by parsers.", fix: "Put your name and contact details in the document body." },
 };
 
+// Specific four-field copy per graded Parse-ability (P1) check, so every lost mark
+// is traceable (INV-9) rather than folded into the pillar total without a finding.
+const P1_COPY: Record<string, { why: string; fix: string }> = {
+  standard_headings: { why: "Non-standard or missing section headings make an ATS mis-file your content.", fix: "Use standard headings: Experience, Education, Skills." },
+  name_at_top: { why: "If your name isn't the largest text at the top, some parsers miss it.", fix: "Put your name as the largest line at the very top." },
+  date_formats: { why: "Inconsistent date formats can break timeline parsing.", fix: "Use a consistent 'MMM YYYY – MMM YYYY' format throughout." },
+  font_size: { why: "Body text under 10pt can be skipped or misread by a parser.", fix: "Use 10–12pt body text." },
+  reading_order: { why: "A broken reading order makes the parser jump around your résumé.", fix: "Use a single-column, linear layout." },
+};
+
+// Specific four-field copy per Readability/impact (P3) check (no shared generic text).
+const P3_COPY: Record<string, { why: string; fix: string }> = {
+  quantified_impact: { why: "Recruiters look for measurable outcomes, not just a list of duties.", fix: "Add numbers — %, ₹/$, time saved, scale — to your strongest bullets." },
+  specific_content: { why: "Generic filler ('team player', 'hard-working') tells a recruiter nothing specific.", fix: "Replace filler with concrete tools, scope and results." },
+  action_verbs: { why: "Weak or repeated verbs make achievements read as passive duties.", fix: "Start bullets with strong, varied verbs (Built, Led, Cut, Shipped)." },
+  length: { why: "The length is off for the content — too long buries your best work, too short looks thin.", fix: "Aim for 1 page (0–8 yrs) or 2 (senior); tighten weak lines." },
+  skim_hierarchy: { why: "Without clear section headings a recruiter can't skim it in 6 seconds.", fix: "Use standard, visible section headings (Experience, Education, Skills)." },
+  error_free: { why: "Typos and inconsistent formatting quietly undercut credibility.", fix: "Proofread; keep tense, punctuation and spacing consistent." },
+  headline: { why: "A missing or vague headline leaves the target role unclear at a glance.", fix: "Add a short, role-relevant headline under your name." },
+};
+
 export async function analyzeResumeV2(input: AnalyzeV2Input): Promise<ScanReport> {
   const jd = (input.jobDescription || "").trim();
   const mode: Mode = jd.length > 0 ? "jd" : "general";
@@ -70,11 +92,35 @@ export async function analyzeResumeV2(input: AnalyzeV2Input): Promise<ScanReport
   let model: DocumentModel;
   let text: string;
   if (input.file) {
-    model = await inspectDocument(input.file);
+    try {
+      model = await inspectDocument(input.file);
+    } catch {
+      // Structural inspection failed (corrupt / unusual PDF). If OCR text exists,
+      // score that as plain text rather than surfacing a 500; otherwise reject honestly.
+      const ocr = (input.ocrText || "").trim();
+      if (ocr.replace(/\s/g, "").length < 40) {
+        throw new HttpError(422, "We couldn't open this file — it may be corrupted. Re-export it and upload again, or paste the text instead.");
+      }
+      model = await inspectDocument({ buffer: Buffer.from(ocr, "utf8"), mimeType: "text/plain", filename: "resume.txt" });
+    }
     text = model.textSelectable && model.text.replace(/\s/g, "").length > 40 ? model.text : (input.ocrText || "").trim();
   } else {
     text = (input.pastedText || input.ocrText || "").trim();
     model = await inspectDocument({ buffer: Buffer.from(text, "utf8"), mimeType: "text/plain", filename: "resume.txt" });
+  }
+
+  // Non-résumé guard (D1): a real résumé has contact details, a recognised section
+  // heading, or résumé-section keywords. If none are present, this is an essay /
+  // letter / unrelated document — reject honestly rather than scoring garbage.
+  const looksLikeResume =
+    model.contact.found ||
+    model.headings.length >= 1 ||
+    /\b(experience|employment|work history|education|skills|projects?|certification|internship)\b/i.test(text);
+  if (!looksLikeResume) {
+    throw new HttpError(
+      422,
+      "This doesn't look like a résumé — it reads more like a letter or article. Upload your résumé (PDF or DOCX) and we'll score it.",
+    );
   }
 
   const gates = pillar1Gates(model);
@@ -105,7 +151,10 @@ export async function analyzeResumeV2(input: AnalyzeV2Input): Promise<ScanReport
   const result = computeScore({ mode, gates, pillars });
   const report = buildReport(result, model, gates, p1, p2detail, p3res.pillar, advisoryOnly, mode);
 
-  // Deterministic edge-case advisories: multi-doc, timeline, JD interpretation, language.
+  // Deterministic edge-case advisories: multi-column, multi-doc, timeline, JD interpretation, language.
+  if (model.columns.count >= 2 && !report.full.deductions.some((d) => d.finding.includes("reading order"))) {
+    report.full.advisory.push("Multiple columns detected — many ATS parsers mis-order columns, so a single-column layout is safer even when it reads cleanly here.");
+  }
   const md = detectMultipleDocs(text);
   if (md.advisory) report.full.advisory.push(md.advisory);
   report.full.advisory.push(...analyzeTimeline(text).advisories);
@@ -139,6 +188,15 @@ function buildReport(
   for (const pen of p1.penalties ?? []) {
     deductions.push({ pillar: "Parse-ability", finding: pen.label, marksLost: `−${pen.points}`, why: pen.why ?? "", fix: pen.fix ?? "" });
   }
+  // P1 graded checks that lost marks (e.g. broken headings from a two-column layout,
+  // tiny fonts, inconsistent dates). Without this every such loss was an orphan
+  // deduction — points gone from Parse-ability with no finding to explain them (INV-9).
+  for (const c of p1.components ?? []) {
+    if (c.earned < c.max * 0.8) {
+      const copy = P1_COPY[c.id] ?? { why: "This makes your résumé harder for an ATS to parse cleanly.", fix: "Use a simple, standard, single-column layout." };
+      deductions.push({ pillar: "Parse-ability", finding: c.label, marksLost: `−${Math.round(c.max - c.earned)}`, why: copy.why, fix: copy.fix });
+    }
+  }
   // P2 weak / missing requirements.
   for (const d of p2detail) {
     if (d.tier === "bonus") continue;
@@ -153,10 +211,11 @@ function buildReport(
       });
     }
   }
-  // P3 weak checks.
+  // P3 weak checks — specific four-field copy per check (not one shared generic line).
   for (const c of p3.components) {
     if (c.earned < c.max * 0.6) {
-      deductions.push({ pillar: "Readability & impact", finding: c.label, marksLost: `−${Math.round(c.max - c.earned)}`, why: "Weakens how a human reads your résumé in a 6-second skim.", fix: "Add quantified, specific detail and strong action verbs." });
+      const copy = P3_COPY[c.id] ?? { why: "Weakens how a human reads your résumé in a 6-second skim.", fix: "Add quantified, specific detail and strong action verbs." };
+      deductions.push({ pillar: "Readability & impact", finding: c.label, marksLost: `−${Math.round(c.max - c.earned)}`, why: copy.why, fix: copy.fix });
     }
   }
   // Reverse-marking notes.

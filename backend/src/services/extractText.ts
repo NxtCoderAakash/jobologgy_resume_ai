@@ -66,11 +66,29 @@ export async function extractResumeText(input: {
   }
 
   if (mime === "application/pdf" || isImage(mime)) {
-    const text = await extractFromFileWithGemini(file);
-    if (!text) {
+    // A password-protected or corrupt PDF (and an unreadable image) makes the
+    // extractor throw or come back empty. Map both to an honest, specific message
+    // instead of letting an exception surface as a generic 500.
+    let text = "";
+    let failed = false;
+    try {
+      text = await extractFromFileWithGemini(file);
+    } catch {
+      failed = true;
+    }
+    if (failed || !text) {
+      if (mime === "application/pdf") {
+        const looksEncrypted = file.buffer.includes(Buffer.from("/Encrypt"));
+        throw new HttpError(
+          422,
+          looksEncrypted
+            ? "This PDF is password-protected, so it can't be read. Re-save it without a password (open it, then Print → Save as PDF with no password) and upload again."
+            : "We couldn't open this PDF — it may be corrupted or an unusual export. Re-export it (File → Save as PDF) and upload again, or paste the text instead.",
+        );
+      }
       throw new HttpError(
         422,
-        "Could not extract text — try a clearer file or paste the text directly",
+        "We couldn't read this image — try a clearer screenshot, or paste the text instead.",
       );
     }
     return text;

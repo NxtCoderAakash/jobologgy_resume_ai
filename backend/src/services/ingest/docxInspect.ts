@@ -7,7 +7,7 @@
  */
 import JSZip from "jszip";
 import mammoth from "mammoth";
-import { canonicalHeading, type DocumentModel } from "./documentModel.js";
+import { canonicalHeading, looksLikePhone, type DocumentModel } from "./documentModel.js";
 
 const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 const PHONE_RE = /\+?\d[\d ()-]{7,}\d/;
@@ -67,10 +67,10 @@ export async function inspectDocx(buf: Buffer): Promise<DocumentModel> {
   const bodyText = xmlRunText(docXml);
   const combined = `${text} ${hfText}`;
   const emails = uniq(combined.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? []);
-  const phones = uniq((combined.match(/\+?\d[\d ()-]{7,}\d/g) ?? []).filter((p) => p.replace(/\D/g, "").length >= 8));
+  const phones = uniq((combined.match(/\+?\d[\d ()-]{7,}\d/g) ?? []).filter((p) => p.replace(/\D/g, "").length >= 10));
   const found = emails.length > 0 || phones.length > 0;
-  const inBody = EMAIL_RE.test(bodyText) || PHONE_RE.test(bodyText);
-  const headerFooterOnly = found && !inBody && (EMAIL_RE.test(hfText) || PHONE_RE.test(hfText));
+  const inBody = EMAIL_RE.test(bodyText) || looksLikePhone(bodyText);
+  const headerFooterOnly = found && !inBody && (EMAIL_RE.test(hfText) || looksLikePhone(hfText));
 
   const mediaCount = Object.keys(zip.files).filter((p) => /^word\/media\//.test(p)).length;
   const columns = docxColumnCount(docXml);

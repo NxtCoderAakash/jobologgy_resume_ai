@@ -7,7 +7,7 @@
  * an isolated header/footer line, a profile photo, tiny fonts, name-at-top, and
  * section headings. Pure w.r.t. a byte buffer → identical model every run (INV-1).
  */
-import { canonicalHeading, type DocumentModel, type ContactFinding, type ColumnFinding } from "./documentModel.js";
+import { canonicalHeading, looksLikePhone, type DocumentModel, type ContactFinding, type ColumnFinding } from "./documentModel.js";
 
 // pdfjs-dist 4.x uses Promise.withResolvers (Node 22+). Backend runs Node 20 → polyfill.
 if (typeof (Promise as unknown as { withResolvers?: unknown }).withResolvers !== "function") {
@@ -117,13 +117,13 @@ function analyzeColumns(items: Item[], pageWidth: number, pageHeight: number): C
 
 function analyzeContact(pages: PageModel[], text: string): ContactFinding {
   const emails = uniq(text.match(EMAIL_RE_G) ?? []);
-  const phones = uniq((text.match(PHONE_RE_G) ?? []).map((p) => p.trim()).filter((p) => p.replace(/\D/g, "").length >= 8));
+  const phones = uniq((text.match(PHONE_RE_G) ?? []).map((p) => p.trim()).filter((p) => p.replace(/\D/g, "").length >= 10));
   const found = emails.length > 0 || phones.length > 0;
   let inBody = false;
   for (const page of pages) {
     for (const line of page.lines) {
       if (line.isHeaderFooter) continue;
-      if (EMAIL_RE.test(line.text) || PHONE_RE.test(line.text)) {
+      if (EMAIL_RE.test(line.text) || looksLikePhone(line.text)) {
         inBody = true;
         break;
       }

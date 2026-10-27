@@ -6,7 +6,7 @@
  */
 import { inspectPdf } from "./pdfInspect.js";
 import { inspectDocx } from "./docxInspect.js";
-import { canonicalHeading, type DocumentModel } from "./documentModel.js";
+import { canonicalHeading, looksLikePhone, type DocumentModel } from "./documentModel.js";
 
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
@@ -56,7 +56,7 @@ function imageModel(mime: string): DocumentModel {
 function textModel(raw: string): DocumentModel {
   const text = raw.trim();
   const emails = [...new Set(text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [])];
-  const phones = [...new Set((text.match(/\+?\d[\d ()-]{7,}\d/g) ?? []).filter((p) => p.replace(/\D/g, "").length >= 8))];
+  const phones = [...new Set((text.match(/\+?\d[\d ()-]{7,}\d/g) ?? []).filter((p) => p.replace(/\D/g, "").length >= 10))];
   const found = emails.length > 0 || phones.length > 0;
   const headings = [...new Set(text.split("\n").map((l) => canonicalHeading(l)).filter((c): c is string => !!c))];
   return {

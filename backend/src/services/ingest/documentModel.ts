@@ -69,6 +69,14 @@ export const HEADING_ALIASES: Record<string, string[]> = {
   Certifications: ["certifications", "certificates", "licenses", "licenses & certifications"],
 };
 
+/** True when a string contains a phone-like run with enough digits to be a real
+ *  number (≥10). Prevents a date range such as "2013 - 2017" (8 digits) from being
+ *  misread as a phone — which would spuriously satisfy the contact-in-body gate. */
+export function looksLikePhone(s: string): boolean {
+  const matches = s.match(/\+?\d[\d ()-]{7,}\d/g) ?? [];
+  return matches.some((m) => m.replace(/\D/g, "").length >= 10);
+}
+
 export function canonicalHeading(line: string): string | null {
   const norm = line.trim().toLowerCase().replace(/[:–—-]+$/g, "").trim();
   if (norm.length > 40) return null; // headings are short

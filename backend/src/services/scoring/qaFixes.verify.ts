@@ -96,6 +96,34 @@ B.Tech, Computer Science — University of Pune
   check("thin JD → advisory explains the match is not confident", strongJd.full.advisory.some((a) => /thin|short|advisory/i.test(a)), JSON.stringify(strongJd.full.advisory));
   check("thin JD → no 'Missing must' deductions surfaced", !strongJd.full.deductions.some((d) => /missing must/i.test(d.finding)));
 
+  // G8 — keyword-stuffing penalty is surfaced as a finding (not applied silently),
+  //       and a stuffed skill's finding doesn't read as "(…-demonstrated)".
+  console.log("\n[G8 anti-stuffing is traceable + coherent copy]");
+  const STUFFED = `RAVI STUFFER
+Pune, India | ravi.stuffer@example.com | +91 98200 11223
+
+SKILLS
+AWS AWS AWS AWS Kubernetes Kubernetes Kubernetes Docker Docker Docker Node.js Node.js Node.js REST REST SQL SQL SQL AWS AWS Kubernetes Docker
+
+EXPERIENCE
+Software Engineer — SomeCo
+Jun 2021 – Present
+- Worked on various tasks and projects.
+
+EDUCATION
+B.Tech, Computer Science — University of Pune
+2013 – 2017`;
+  const stuffedJd = `Backend Engineer
+
+Requirements:
+- Must have strong experience with Node.js and building REST APIs.
+- Must have hands-on AWS (EC2, S3, Lambda) in production.
+- Must be proficient in SQL databases.
+- Kubernetes experience is strongly preferred.`;
+  const stuffedRep = await analyzeResumeV2({ pastedText: STUFFED, jobDescription: stuffedJd });
+  check("keyword-stuffing is surfaced as a JD-relevance finding", stuffedRep.full.deductions.some((d) => d.pillar === "JD relevance" && /stuffing/i.test(d.finding)), JSON.stringify(stuffedRep.full.deductions.map((d) => d.finding)));
+  check("no finding reads as contradictory '…-demonstrated' while weakly evidenced", !stuffedRep.full.deductions.some((d) => /weakly evidenced/i.test(d.finding) && /demonstrated/i.test(d.finding)), JSON.stringify(stuffedRep.full.deductions.map((d) => d.finding)));
+
   console.log(`\n${failed === 0 ? "ALL GREEN" : "FAILURES"} — ${passed} passed, ${failed} failed`);
   process.exit(failed > 0 ? 1 : 0);
 }

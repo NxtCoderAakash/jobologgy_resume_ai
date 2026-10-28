@@ -75,7 +75,43 @@ passed because the phone regex matched the body date range "2013 - 2017" (8 digi
 DOCX header-only contact now caps at 60 ("Underlying quality 86.3 — capped by a parse issue",
 Parse-ability 1 critical) after the G6 phone-vs-date fix. Contact-in-body gate fires correctly.
 
-## Still to test
-- **Part 2 remainder** — conflicting JD (junior+10y), multi-role JD, visible keyword-stuffing
-  anti-inflation (illegal-clause + injection confirmed earlier in the session).
-- **Part 3** — Optimizer/fabrication, export re-score, trust invariants.
+## Part 2 — G7 fix verified live (rev v11)
+Strong résumé + thin JD now scores **General 86 "Excellent"** (was JD-Specific 55) with the JD-thin
+advisory retained, no phantom JD-relevance bar, no "Missing must" deductions. G7 locked in qaFixes.verify (13/13).
+
+## Part 2 — visible keyword-stuffing (D5 / INV-5)
+- ✅ **INV-5 holds (release blocker):** stuffed résumé (6× AWS wall + "worked on various tasks") scored
+  **JD-Specific 70** — LOWER than the genuine résumé's 77. Stuffing does not inflate. AWS flagged
+  "Weakly evidenced must −20" despite 6 repetitions (bare-list credit, not must-have satisfaction).
+- ⚠️ **G8 (traceability, like G3 but for P2):** JD relevance 62 (−38) surfaces only 1 finding (aws −20);
+  the anti-stuffing −10 and sub-threshold weak-evidence reductions aren't itemized. INV-9 for the JD pillar.
+- ⚠️ **Copy bug:** finding label "Weakly evidenced must: aws (exact-demonstrated)" is self-contradictory
+  ("weakly evidenced" + "demonstrated"); evidence tag should read e.g. "(listed)".
+
+## Part 3 — Optimizer (live `/app`): fabrication prevention
+Input: thin résumé (Node.js/PostgreSQL/REST/Git, vague bullets) + JD demanding AWS/Kubernetes/Docker/SQL.
+- ✅ **No fabrication (INV-3):** AWS, EC2, S3, Lambda, Kubernetes, Docker, GraphQL all stay in "What was
+  lacking (missing before)" — not invented. Only "REST API" added (reframes the real "REST").
+- ✅ **No invented metrics:** Impact & metrics 10 → 10 (vague bullets got no fake numbers).
+- ✅ **Honest modest delta:** ATS 42 → 48 (+6), not inflated; thin résumé keeps a low honest ceiling.
+- ✅ **Honest guidance:** narrative explicitly says it omitted AWS/Docker/Kubernetes/GraphQL "to maintain
+  strict integrity", and tells the user to add real experience and re-run "to raise your score honestly".
+- ⚠️ **G9 (trust/consistency):** the narrative says "we did not add SQL Databases — your résumé doesn't
+  show evidence of it", BUT the Skills AFTER list is "Node.js, PostgreSQL, REST API, Git, **SQL Databases**"
+  — i.e. it WAS added. Defensible as a PostgreSQL generalization, but the honesty narrative must match the
+  actual output. Medium severity (trust-critical surface).
+
+## Findings G8 / G9 / copy — FIXED (rev v12)
+- **G8** ✅ `analyzeV2.buildReport` now surfaces the JD pillar's penalties (keyword-stuffing −10) as a
+  JD-relevance finding, so the point loss is traceable (INV-9). Locked in qaFixes.verify.
+- **Copy** ✅ `pillar2.assembleP2` relabels a stuffed skill's evidence to "listed (repeated, no evidence)"
+  so the finding no longer reads "weakly evidenced … (exact-demonstrated)". Locked in qaFixes.verify.
+- **G9** ✅ `analyzeResume.ts` now reconciles the change narrative with the sanitize result — removedSkills
+  are stripped from `improvements[].after` and `keywordAnalysis.addedInNew`, so the report no longer shows a
+  removed skill (e.g. "SQL Databases") as "added" while the note says it wasn't. (Exported CV was already
+  correct; this fixes the display.) Verified live below.
+
+## Still to test (lower priority)
+- Part 2 tail: conflicting JD (junior+10y), multi-role JD (illegal-clause + injection confirmed earlier).
+- Part 3 tail: export re-score / trust loop (INV-2, needs a file download), export hygiene re-confirm
+  (em-dash/buzzword scrub — confirmed earlier in the session).

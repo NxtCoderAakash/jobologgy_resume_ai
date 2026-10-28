@@ -158,7 +158,10 @@ export async function analyzeResumeV2(input: AnalyzeV2Input): Promise<ScanReport
   pillars.push(p3res.pillar);
 
   const result = computeScore({ mode: effectiveMode, gates, pillars });
-  const report = buildReport(result, model, gates, p1, p2detail, p3res.pillar, advisoryOnly, effectiveMode);
+  // Surface the JD pillar's own penalties (e.g. keyword-stuffing −10) as findings —
+  // only when we actually scored against the JD (not advisory-only).
+  const p2penalties = scoreAsJd ? (p2pillar?.penalties ?? []) : [];
+  const report = buildReport(result, model, gates, p1, p2detail, p3res.pillar, advisoryOnly, effectiveMode, p2penalties);
 
   // Deterministic edge-case advisories: multi-column, multi-doc, timeline, JD interpretation, language.
   if (model.columns.count >= 2 && !report.full.deductions.some((d) => d.finding.includes("reading order"))) {
@@ -185,6 +188,7 @@ function buildReport(
   p3: PillarInput,
   advisoryOnly: boolean,
   mode: Mode,
+  p2penalties: PillarInput["penalties"] = [],
 ): ScanReport {
   const deductions: Deduction[] = [];
 
@@ -221,6 +225,11 @@ function buildReport(
         fix: missing ? "Add it inside a real bullet if you have it; if not, this role may not fit yet." : "Move it into an achievement bullet showing real use.",
       });
     }
+  }
+  // JD-pillar penalties (e.g. keyword-stuffing −10) — surfaced so the JD-relevance
+  // point loss is traceable (INV-9), not applied silently.
+  for (const pen of p2penalties ?? []) {
+    deductions.push({ pillar: "JD relevance", finding: pen.label, marksLost: `−${pen.points}`, why: pen.why ?? "", fix: pen.fix ?? "" });
   }
   // P3 weak checks — specific four-field copy per check (not one shared generic line).
   for (const c of p3.components) {

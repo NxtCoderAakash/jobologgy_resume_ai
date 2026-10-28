@@ -52,11 +52,15 @@ export function assembleP2(
   for (const r of scored) {
     const ev = classifyEvidence(r.skill, resumeText);
     let credit = ev.credit;
-    if (stuffedSet.has(r.skill.toLowerCase())) credit = 0; // strip stuffed credit
+    // Stuffed skills have their credit stripped — relabel the evidence so the
+    // finding doesn't read as "weakly evidenced … (demonstrated)" (contradictory).
+    const isStuffed = stuffedSet.has(r.skill.toLowerCase());
+    const evidenceLabel = isStuffed ? "listed (repeated, no evidence)" : ev.klass;
+    if (isStuffed) credit = 0;
     const max = (TIER_WEIGHT[r.tier] * (0.6 + 0.4 * r.centrality)) / weightSum * 100;
     const earned = max * credit;
-    components.push({ id: `req:${r.skill}`, label: `${r.tier} — ${r.skill} (${ev.klass})`, max: round2(max), earned: round2(earned) });
-    detail.push({ skill: r.skill, tier: r.tier, evidence: ev.klass, credit, earned: round2(earned), max: round2(max) });
+    components.push({ id: `req:${r.skill}`, label: `${r.tier} — ${r.skill} (${evidenceLabel})`, max: round2(max), earned: round2(earned) });
+    detail.push({ skill: r.skill, tier: r.tier, evidence: evidenceLabel, credit, earned: round2(earned), max: round2(max) });
   }
 
   // Bonus: additive extra (max beyond 100; engine floors). Absence costs nothing.

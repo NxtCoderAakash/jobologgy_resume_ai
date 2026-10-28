@@ -129,8 +129,28 @@ export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult>
   applyCanonicalScores(analysis, beforeScore, afterScore);
 
   // 6. If we removed AI-invented skills, tell the user honestly instead of
-  //    silently shipping (or silently dropping) them.
+  //    silently shipping (or silently dropping) them — AND reconcile the change
+  //    narrative so it doesn't still show a removed skill as "added" while the note
+  //    says we didn't add it (the actual exported CV already has it removed).
   if (removedSkills.length) {
+    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const stripSkill = (text: string): string =>
+      removedSkills
+        .reduce(
+          (acc, rm) =>
+            acc
+              .replace(new RegExp(`\\s*,\\s*${esc(rm)}(?=\\s*,|\\s*$|\\s*\\.)`, "gi"), "")
+              .replace(new RegExp(`${esc(rm)}\\s*,\\s*`, "gi"), "")
+              .replace(new RegExp(`\\b${esc(rm)}\\b`, "gi"), ""),
+          text,
+        )
+        .replace(/\s*,\s*,/g, ",")
+        .replace(/,\s*$/g, "")
+        .trim();
+    for (const imp of analysis.improvements) imp.after = stripSkill(imp.after);
+    analysis.keywordAnalysis.addedInNew = analysis.keywordAnalysis.addedInNew.filter(
+      (k) => !removedSkills.some((rm) => rm.toLowerCase() === k.toLowerCase()),
+    );
     analysis.summaryOfChanges +=
       `\n\nNote: we did not add ${removedSkills.join(", ")} — your résumé doesn't ` +
       `show evidence of ${removedSkills.length > 1 ? "them" : "it"}. ` +

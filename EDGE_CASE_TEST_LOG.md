@@ -134,5 +134,26 @@ Honest core verified live: gate-cap + dual display, determinism trap, injection 
 equivalence/bonus, anti-stuffing (no inflation + now traceable), thin-JD advisory (no penalty),
 conflicting + illegal JD protection, and — the headline — **the optimizer never fabricates** (skills/
 metrics), with its change-narrative now reconciled to the sanitized output.
-Remaining (minor, lower priority, partly covered earlier): multi-role JD segmentation; export trust-loop
-INV-2 live download (backend re-inspection code is in analyzeResume.ts step 7b); export hygiene re-confirm.
+## Export-side PDF — trust loop + hygiene ✅ (done manually in Chrome, rev v13)
+Generated an Optimized CV PDF in the Optimizer, fetched the real file, inspected it, and re-uploaded it.
+- Backend inspector on the real exported PDF: **all 4 parse gates PASS** (text-selectable, single-column,
+  content-not-boxed, contact-in-body); hygiene clean (**0 em-dash, 0 smart quotes, 0 invisible chars, no
+  banned buzzwords**).
+- **Live round-trip (INV-2):** re-uploading the exported PDF to ?v2=1 → **General 91/100 Excellent,
+  Parse-ability 100/100, no gate cap.** The file handed to the user re-parses clean.
+- Optimizer honesty on an already-strong résumé: **92 → 92 "No score change"** ("we never invent skills
+  or metrics to inflate").
+
+## PDF coverage — READING (14 fixtures) + WRITING (export trust-loop) both verified live in Chrome.
+
+## Deferred (low priority — not tested, user decision 2026-10-28)
+These narrower ingestion edge cases were left untested:
+- Owner-password-only PDF (opens fine, print/copy restricted) — distinct from the open/user-password
+  case (fixture 02) which IS tested. ⚠ Worth a look: the G1 catch checks for `/Encrypt` in the bytes,
+  so IF Gemini fails to read an owner-restricted PDF it would be wrongly labelled "password-protected".
+- OCR confidence banding on degraded scans (low-DPI / skewed / handwritten).
+- Very large / many-page PDF size-&-page-limit handling.
+- Mixed-language PDF (English + Devanagari) — graceful scoring + non-English advisory threshold.
+- Mixed scanned+text pages in one PDF (does an image-only page fail the text-selectable gate?).
+- General mode: Role-Fit advisory panel.
+- Part 2: multi-role JD segmentation.

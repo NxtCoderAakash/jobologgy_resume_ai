@@ -28,10 +28,12 @@ export interface ScoringConfig {
 }
 
 export const SCORING_CONFIG: ScoringConfig = {
-  version: "score-engine-0.1.0-provisional",
-  // PO-confirmed Rubric weights (as fractions of the weighted sum).
+  version: "score-engine-0.2.0-general-35-65",
+  // Rubric weights (fractions of the weighted sum). General is tuned to 35/65
+  // (was the PO default 50/50) so résumé CONTENT quality weighs more than raw
+  // parse-ability — a parseable-but-weak résumé now scores lower. JD unchanged.
   weights: {
-    general: { P1: 0.5, P3: 0.5 },
+    general: { P1: 0.35, P3: 0.65 },
     jd: { P1: 0.3, P2: 0.35, P3: 0.35 },
   },
   // PO-confirmed ceilings.

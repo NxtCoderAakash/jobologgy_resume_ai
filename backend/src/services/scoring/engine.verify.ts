@@ -52,11 +52,11 @@ const pillarFlat = (id: PillarId, earned: number) => ({ id, components: [comp("a
       pillarFlat("P3", 100),
     ],
   });
-  // P1 = 40 + (40*0.5=20) = 60 ; general P1*.5 + P3*.5 = 30 + 50 = 80
+  // P1 = 40 + (40*0.5=20) = 60 ; general P1*.35 + P3*.65 = 21 + 65 = 86 (tuned 35/65)
   check("T2 reverse-marked P1 = 60", r.pillars.find((p) => p.id === "P1")?.score === 60);
   check("T2 only one section halved", r.reverseMarked.length === 1, `got ${r.reverseMarked.length}`);
   check("T2 record 40→20", r.reverseMarked[0]?.from === 40 && r.reverseMarked[0]?.to === 20);
-  check("T2 final = 80", r.finalScore === 80, `got ${r.finalScore}`);
+  check("T2 final = 86", r.finalScore === 86, `got ${r.finalScore}`);
 }
 
 // ---- T3: gate cap binds (raw above 60) ----

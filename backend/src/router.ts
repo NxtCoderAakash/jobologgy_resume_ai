@@ -28,7 +28,7 @@ export async function route(
 
   if (method === "GET" && (path === "/" || path === "/health")) {
     // `rev` bumps with notable backend changes so a deploy can be verified.
-    sendJson(res, 200, { ok: true, service: "jobologgy-backend", rev: "pillar-engine-v14-default" });
+    sendJson(res, 200, { ok: true, service: "jobologgy-backend", rev: "pillar-engine-v15-general-35-65" });
     return;
   }
 

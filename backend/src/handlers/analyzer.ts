@@ -35,10 +35,10 @@ export async function handleAnalyzerScore(
     );
   }
 
-  // Flag-gated V2 engine (pillars + gates + caps + 4-field report). Opt-in only;
-  // the live default below is unchanged. Enable per-request with engine=v2, or
-  // globally with SCORING_V2=1.
-  const useV2 = fields.engine === "v2" || process.env.SCORING_V2 === "1";
+  // Honest pillar engine (gates + caps + 4-field report) is now the DEFAULT.
+  // Opt back into the old flat scorer per-request with engine=legacy, or globally
+  // with SCORING_LEGACY=1 (kept as an escape hatch).
+  const useV2 = fields.engine !== "legacy" && process.env.SCORING_LEGACY !== "1";
   if (useV2) {
     const report = await analyzeResumeV2({
       file: file ? { buffer: file.buffer, mimeType: file.mimeType, filename: file.filename } : null,

@@ -46,7 +46,7 @@ export default function AnalyzerPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzerResult | null>(null);
   // Opt-in V2 pillar engine (flag-gated): ?v2=1 or NEXT_PUBLIC_SCORING_V2=1.
-  const [v2Flag, setV2Flag] = useState(false);
+  const [v2Flag, setV2Flag] = useState(true); // honest pillar engine is the default
   const [reportV2, setReportV2] = useState<ScanReport | null>(null);
   // Holds the API response during the loader's completion animation.
   const [pending, setPending] = useState<AnalyzerResult | null>(null);
@@ -73,13 +73,15 @@ export default function AnalyzerPage() {
   }, [usePaste, resumeText]);
   useEffect(() => () => setChatContext(null), []);
 
-  // Detect the opt-in V2 flag (query param or env).
+  // Honest pillar engine (ScanReportView) is now the DEFAULT. Opt back into the
+  // old flat report with ?v2=0 / ?legacy=1 (escape hatch).
   useEffect(() => {
     try {
       const q = new URLSearchParams(window.location.search);
-      setV2Flag(q.get("v2") === "1" || process.env.NEXT_PUBLIC_SCORING_V2 === "1");
+      const legacy = q.get("v2") === "0" || q.get("legacy") === "1" || process.env.NEXT_PUBLIC_SCORING_LEGACY === "1";
+      setV2Flag(!legacy);
     } catch {
-      /* ignore */
+      setV2Flag(true);
     }
   }, []);
 

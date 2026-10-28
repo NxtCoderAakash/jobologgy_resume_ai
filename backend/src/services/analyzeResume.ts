@@ -7,7 +7,7 @@
 import { randomUUID } from "node:crypto";
 import { extractResumeText } from "./extractText.js";
 import { analyzeAndRewrite } from "./gemini.js";
-import { scoreResume } from "./analyzerAi.js";
+import { scoreResumeHonest } from "./scoring/honestAdapter.js";
 import { sanitizeRewrittenCv, composeCvText, stripRemovedSkills } from "./cvPostProcess.js";
 import { applyExportGuards } from "./optimizer/exportGuards.js";
 import { inspectPdf } from "./ingest/pdfInspect.js";
@@ -94,9 +94,12 @@ export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult>
   //    skip the call (2 AI calls total); otherwise we score it here (3 calls).
   //    NB: "before" is scored on the ORIGINAL résumé (not the augmented one) so the
   //    improvement from newly-confirmed skills shows up honestly in the "after".
+  // "before" now comes from the honest pillar engine (same as the Analyzer) — so the
+  // Optimizer's before/after are consistent with it, gated/capped, and deterministic.
+  // A forwarded Analyzer hand-off score (priorBefore) is reused when present.
   const beforePromise: Promise<AnalyzerResult> = input.priorBefore
     ? Promise.resolve(input.priorBefore)
-    : scoreResume({ resumeText, jobDescription });
+    : scoreResumeHonest({ resumeText, jobDescription });
   const [analysis, beforeScore] = await Promise.all([
     analyzeAndRewrite({
       resumeText: augmentedText,
@@ -120,7 +123,7 @@ export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult>
   // 4. Score the FINAL (guarded) rewrite ON ITS OWN with the same canonical engine.
   //    Scoring it solo (not alongside the original) is what makes the "after" match
   //    an independent re-check in the standalone Analyzer — no comparison inflation.
-  const afterScore = await scoreResume({
+  const afterScore = await scoreResumeHonest({
     resumeText: composeCvText(guardedCv),
     jobDescription,
   });

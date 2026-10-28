@@ -10,6 +10,7 @@ import { specificity, createCache, type AiJudge } from "../evaluation/aiRefine.j
 import { analyzeResumeV2, type ScanReport } from "../scoring/analyzeV2.js";
 import { applyExportGuards } from "./exportGuards.js";
 import { stripRemovedSkills } from "../cvPostProcess.js";
+import { scoreResumeHonest } from "../scoring/honestAdapter.js";
 import { gateReport } from "../entitlement.js";
 import type { RewrittenCV } from "../../types/analysis.js";
 
@@ -127,6 +128,31 @@ async function main() {
   check("PostgreSQL is never chewed into PostgreREST", !/postgreREST/i.test(stripRemovedSkills("Node.js, PostgreSQL, REST APIs", ["SQL"])));
   check("removes a leading skill", stripRemovedSkills("AWS, Node.js, PostgreSQL", ["AWS"]) === "Node.js, PostgreSQL");
   check("no-op when the skill is absent", stripRemovedSkills("Node.js, PostgreSQL, REST", ["AWS"]) === "Node.js, PostgreSQL, REST");
+
+  // Honest adapter — Optimizer scores now come from the pillar engine (AnalyzerResult shape intact)
+  console.log("\n[honest adapter: ScanReport → AnalyzerResult]");
+  const RES = `PRIYA SHARMA
+Pune, India | priya.sharma@example.com | +91 98200 11223
+
+SKILLS
+Node.js, PostgreSQL, REST APIs, Docker, Jest
+
+EXPERIENCE
+Software Engineer — Fintech Solutions Pvt Ltd
+Jun 2021 – Present
+- Built REST APIs in Node.js handling 2M requests/day at 99.9% uptime.
+
+EDUCATION
+B.Tech, Computer Science — University of Pune
+2013 – 2017`;
+  const ar = await scoreResumeHonest({ resumeText: RES, jobDescription: "" });
+  check("atsScore is a valid 0–100 number", typeof ar.atsScore === "number" && ar.atsScore >= 0 && ar.atsScore <= 100, `${ar.atsScore}`);
+  check("all four breakdown dims present & in range", ["keywordMatch", "relevanceToJD", "formatting", "impactMetrics"].every((k) => {
+    const d = (ar.scoreBreakdown as Record<string, { score: number }>)[k];
+    return d && d.score >= 0 && d.score <= 100;
+  }));
+  check("formatting (P1 parse-ability) is high for clean text", ar.scoreBreakdown.formatting.score >= 80, `${ar.scoreBreakdown.formatting.score}`);
+  check("verdict/band is set", typeof ar.verdict === "string" && ar.verdict.length > 0, ar.verdict);
 
   console.log(`\n${failed === 0 ? "ALL GREEN" : "FAILURES"} — ${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);

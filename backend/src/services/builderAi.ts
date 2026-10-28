@@ -114,8 +114,12 @@ plus optional context. Produce:
    suggestions grounded ONLY in what the text/context already implies (e.g. surface an implied
    skill or outcome). Never invent employers, numbers, tools, or achievements not implied.
 
-HARD RULES:
+HARD RULES (consistent with the app's honest scoring engine):
 - NEVER fabricate facts, metrics, employers, dates, or technologies.
+- If a concrete number would strengthen a bullet but isn't in the text, use an explicit placeholder
+  like "[X]%" or "[team size]" for the candidate to fill in — never invent a figure.
+- Avoid AI-cliché buzzwords (leverage, spearheaded, seamless, robust, delve, elevate) and em-dashes;
+  use plain, specific wording.
 - Keep "rephrased" roughly the same length or shorter than the original.
 - If the input text is empty or too thin to improve, return the original text unchanged in
   "rephrased" and put general phrasing tips in "bulletIdeas".

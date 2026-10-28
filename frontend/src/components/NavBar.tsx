@@ -105,6 +105,7 @@ export default function NavBar() {
               <NavLink href="/analyzer">Analyzer</NavLink>
               <NavLink href="/app">Optimizer</NavLink>
               <NavLink href="/builder">Résumé Studio</NavLink>
+              <NavLink href="/history">History</NavLink>
               <span className="hidden max-w-[200px] truncate text-sm text-ink-500 lg:inline">
                 {email}
               </span>
@@ -202,6 +203,9 @@ export default function NavBar() {
             </NavLink>
             <NavLink href="/builder" block onClick={() => setOpen(false)}>
               Résumé Studio
+            </NavLink>
+            <NavLink href="/history" block onClick={() => setOpen(false)}>
+              History
             </NavLink>
           </nav>
           <div className="mt-3 border-t border-slate-100 pt-3">

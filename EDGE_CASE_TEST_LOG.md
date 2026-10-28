@@ -111,7 +111,28 @@ Input: thin résumé (Node.js/PostgreSQL/REST/Git, vague bullets) + JD demanding
   removed skill (e.g. "SQL Databases") as "added" while the note says it wasn't. (Exported CV was already
   correct; this fixes the display.) Verified live below.
 
-## Still to test (lower priority)
-- Part 2 tail: conflicting JD (junior+10y), multi-role JD (illegal-clause + injection confirmed earlier).
-- Part 3 tail: export re-score / trust loop (INV-2, needs a file download), export hygiene re-confirm
-  (em-dash/buzzword scrub — confirmed earlier in the session).
+## G8 / G9 verified live (rev v12 → v13)
+- **G8** ✅ stuffed résumé now shows TWO JD-relevance findings: "Weakly evidenced must: aws
+  (listed (repeated, no evidence)) −21" (coherent copy) + "Keyword stuffing detected −10" (traceable).
+- **G9** ✅ optimizer narrative reconciled: "Added" shows only REST API (not SQL), note says "we did not
+  add SQL", "Already matched" lists PostgreSQL. **Caught a regex regression live** — stripping "SQL"
+  by substring mangled "PostgreSQL, REST" → "PostgreREST". Fixed with boundary-safe `stripRemovedSkills()`
+  (extracted to cvPostProcess, locked in optimizer.verify 32/32, rev v13). Re-verify on v13 pending.
+- Optimizer honesty re-confirmed: ATS 42→52 (+10), AWS/EC2/S3/Lambda/Kubernetes/Docker/GraphQL stay
+  "missing", bullets upgraded "while strictly preserving scope and avoiding invention of unearned metrics".
+
+## Part 2 — conflicting + illegal JD (D4) ✅
+Fresher résumé + JD ("junior but 10+ years required", "under 25", "male only"):
+- ✅ "This JD conflicts (junior role but asks for many years). We did not penalise you for the experience clause."
+- ✅ "We ignored clause(s) that shouldn't affect hiring (age requirement, gender requirement)."
+- JD-relevance deductions are only the legitimate ones (html/css/javascript listed-not-evidenced −13 each);
+  no 10-years / age / gender penalty. Confirms conflicting-seniority + illegal-clause exclusion in one pass.
+
+## FINAL STATUS (rev v13)
+Parts 1–3 covered. **9 findings G1–G9 found → fixed → deployed → re-verified live in Chrome.**
+Honest core verified live: gate-cap + dual display, determinism trap, injection defense, tiering/
+equivalence/bonus, anti-stuffing (no inflation + now traceable), thin-JD advisory (no penalty),
+conflicting + illegal JD protection, and — the headline — **the optimizer never fabricates** (skills/
+metrics), with its change-narrative now reconciled to the sanitized output.
+Remaining (minor, lower priority, partly covered earlier): multi-role JD segmentation; export trust-loop
+INV-2 live download (backend re-inspection code is in analyzeResume.ts step 7b); export hygiene re-confirm.

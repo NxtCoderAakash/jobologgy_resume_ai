@@ -11,10 +11,13 @@
  *   the coach reads.
  */
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { streamChat, extractFile, type ChatMessage } from "@/lib/chatApi";
 import { analyzeResume } from "@/lib/api";
 import { renderCvPdf } from "@/lib/builderApi";
+import { setStudioCv } from "@/lib/handoff";
+import { normalizeCv, type CvData } from "@/types/builder";
 import { getChatContext, subscribeChatContext, type ChatContext } from "@/lib/chatContext";
 import BotMascot from "@/components/BotMascot";
 
@@ -37,6 +40,7 @@ interface OptimizeResult {
   after: number;
   cvUrl: string | null;
   reportUrl: string | null;
+  cv?: CvData; // the optimized structured CV, for "Edit in Résumé Studio"
 }
 
 /** A turn. `apiContent` (when set) is sent to the model instead of `content`,
@@ -133,9 +137,17 @@ function Dots() {
 
 /** Score + PDF download card rendered inside an assistant bubble. */
 function OptimizeCard({ r }: { r: OptimizeResult }) {
+  const router = useRouter();
   const delta = r.after - r.before;
   const improved = delta > 0;
   const lowered = delta < 0;
+
+  /** Carry the optimized résumé into the Studio to add more content. */
+  function editInStudio() {
+    if (!r.cv) return;
+    setStudioCv({ ...r.cv, style: "standard" }, "Optimized résumé");
+    router.push("/builder");
+  }
   return (
     <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
       <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-ink-900">
@@ -184,6 +196,15 @@ function OptimizeCard({ r }: { r: OptimizeResult }) {
           >
             ⬇ Improvement report (PDF)
           </a>
+        )}
+        {r.cv && (
+          <button
+            type="button"
+            onClick={editInStudio}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-ink-700 transition hover:bg-slate-50"
+          >
+            ✎ Edit in Résumé Studio (add more content)
+          </button>
         )}
       </div>
     </div>
@@ -518,7 +539,13 @@ export default function ChatWidget() {
         copy[copy.length - 1] = {
           role: "assistant",
           content: text,
-          optimize: { before, after, cvUrl: res.cvPdfUrl, reportUrl: res.reportPdfUrl },
+          optimize: {
+            before,
+            after,
+            cvUrl: res.cvPdfUrl,
+            reportUrl: res.reportPdfUrl,
+            cv: normalizeCv(res.analysis.rewrittenCV as unknown as Partial<CvData>),
+          },
         };
         return copy;
       });

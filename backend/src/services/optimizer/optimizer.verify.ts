@@ -9,6 +9,7 @@ import { fixTasksFromReport } from "./fixTasks.js";
 import { specificity, createCache, type AiJudge } from "../evaluation/aiRefine.js";
 import { analyzeResumeV2, type ScanReport } from "../scoring/analyzeV2.js";
 import { applyExportGuards } from "./exportGuards.js";
+import { stripRemovedSkills } from "../cvPostProcess.js";
 import { gateReport } from "../entitlement.js";
 import type { RewrittenCV } from "../../types/analysis.js";
 
@@ -117,6 +118,15 @@ async function main() {
   check("free payload OMITS full deductions", free.full === undefined && JSON.stringify(free).indexOf("Jenkins") === -1);
   check("free payload keeps teaser + score", free.teaser.byPillar.length === 1 && free.score === 72);
   check("paid payload includes full deductions", !!paid.full && paid.full.deductions.length === 1);
+
+  // G9 — reconciling the change-narrative strips removed skills WITHOUT mangling a
+  // legit skill that contains the removed token as a substring (PostgreSQL vs SQL).
+  console.log("\n[G9 stripRemovedSkills — boundary-safe]");
+  check("removes 'SQL Databases' cleanly", stripRemovedSkills("Node.js, PostgreSQL, REST API, Git, SQL Databases", ["SQL Databases"]) === "Node.js, PostgreSQL, REST API, Git");
+  check("removes standalone 'SQL' but keeps PostgreSQL intact", stripRemovedSkills("Node.js, PostgreSQL, REST, Git, SQL", ["SQL"]) === "Node.js, PostgreSQL, REST, Git", stripRemovedSkills("Node.js, PostgreSQL, REST, Git, SQL", ["SQL"]));
+  check("PostgreSQL is never chewed into PostgreREST", !/postgreREST/i.test(stripRemovedSkills("Node.js, PostgreSQL, REST APIs", ["SQL"])));
+  check("removes a leading skill", stripRemovedSkills("AWS, Node.js, PostgreSQL", ["AWS"]) === "Node.js, PostgreSQL");
+  check("no-op when the skill is absent", stripRemovedSkills("Node.js, PostgreSQL, REST", ["AWS"]) === "Node.js, PostgreSQL, REST");
 
   console.log(`\n${failed === 0 ? "ALL GREEN" : "FAILURES"} — ${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);

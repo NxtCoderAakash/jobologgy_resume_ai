@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 import { extractResumeText } from "./extractText.js";
 import { analyzeAndRewrite } from "./gemini.js";
 import { scoreResume } from "./analyzerAi.js";
-import { sanitizeRewrittenCv, composeCvText } from "./cvPostProcess.js";
+import { sanitizeRewrittenCv, composeCvText, stripRemovedSkills } from "./cvPostProcess.js";
 import { applyExportGuards } from "./optimizer/exportGuards.js";
 import { inspectPdf } from "./ingest/pdfInspect.js";
 import { pillar1Gates } from "./ingest/pillar1.js";
@@ -133,21 +133,7 @@ export async function analyzeResume(input: AnalyzeInput): Promise<AnalyzeResult>
   //    narrative so it doesn't still show a removed skill as "added" while the note
   //    says we didn't add it (the actual exported CV already has it removed).
   if (removedSkills.length) {
-    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const stripSkill = (text: string): string =>
-      removedSkills
-        .reduce(
-          (acc, rm) =>
-            acc
-              .replace(new RegExp(`\\s*,\\s*${esc(rm)}(?=\\s*,|\\s*$|\\s*\\.)`, "gi"), "")
-              .replace(new RegExp(`${esc(rm)}\\s*,\\s*`, "gi"), "")
-              .replace(new RegExp(`\\b${esc(rm)}\\b`, "gi"), ""),
-          text,
-        )
-        .replace(/\s*,\s*,/g, ",")
-        .replace(/,\s*$/g, "")
-        .trim();
-    for (const imp of analysis.improvements) imp.after = stripSkill(imp.after);
+    for (const imp of analysis.improvements) imp.after = stripRemovedSkills(imp.after, removedSkills);
     analysis.keywordAnalysis.addedInNew = analysis.keywordAnalysis.addedInNew.filter(
       (k) => !removedSkills.some((rm) => rm.toLowerCase() === k.toLowerCase()),
     );

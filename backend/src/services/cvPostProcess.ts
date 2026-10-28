@@ -44,6 +44,25 @@ export function skillSupportedBySource(skill: string, sourceTokenSet: Set<string
   return parts.every((p) => sourceTokenSet.has(p));
 }
 
+/** Remove `removedSkills` from a comma-list / sentence, ONLY on word boundaries —
+ *  so stripping "SQL" never chews the "SQL" inside "PostgreSQL" (which turned
+ *  "PostgreSQL, REST" into "PostgreREST"). Used to reconcile the optimizer's change
+ *  narrative with what the sanitizer actually dropped. */
+export function stripRemovedSkills(text: string, removedSkills: string[]): string {
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return removedSkills
+    .reduce((acc, rm) => {
+      const r = esc(rm);
+      return acc
+        .replace(new RegExp(`\\s*,\\s*\\b${r}\\b`, "gi"), "") // ", SQL"
+        .replace(new RegExp(`\\b${r}\\b\\s*,\\s*`, "gi"), "") // "SQL, "
+        .replace(new RegExp(`\\b${r}\\b`, "gi"), ""); // standalone
+    }, text)
+    .replace(/\s*,\s*,/g, ", ")
+    .replace(/^\s*,\s*|\s*,\s*$/g, "")
+    .trim();
+}
+
 export interface SanitizeResult {
   cv: RewrittenCV;
   /** Skills the AI added that the source résumé doesn't support (removed). */

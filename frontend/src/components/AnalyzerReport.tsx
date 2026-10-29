@@ -6,6 +6,7 @@
  * matched/missing keywords, strengths / gaps / recommendations).
  */
 import ScoreGauge from "@/components/ScoreGauge";
+import ScoreDisclaimer from "@/components/ScoreDisclaimer";
 import type { AnalyzerResult } from "@/types/analyzer";
 
 function verdictTone(score: number): string {
@@ -152,6 +153,13 @@ export default function AnalyzerReport({
         icon="🎯"
         items={result.recommendations}
         toneClass="text-brand-700"
+      />
+
+      {/* Honest footer — shown on every result, both modes (PO C2 / INV-10). */}
+      <ScoreDisclaimer
+        mode={generalScan ? "general" : "jd"}
+        ceiling={generalScan ? 95 : 90}
+        atCeiling={result.atsScore >= (generalScan ? 95 : 90)}
       />
     </div>
   );

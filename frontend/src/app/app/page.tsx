@@ -459,6 +459,7 @@ export default function WorkspacePage() {
               result={result}
               cvStyle={cvStyle}
               photoDataUrl={cvStyle === "creative" ? photoDataUrl : null}
+              generalScan={lastRunGeneral}
             />
           </div>
         )}

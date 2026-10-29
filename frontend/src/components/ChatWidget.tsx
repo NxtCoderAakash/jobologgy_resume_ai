@@ -174,6 +174,11 @@ function OptimizeCard({ r }: { r: OptimizeResult }) {
           genuinely-missing skills and re-run to raise it.
         </p>
       )}
+      {/* Honest note — both modes carry a disclaimer (PO C2 / INV-10). Chat optimize is general. */}
+      <p className="mt-1.5 text-[11px] leading-snug text-ink-500">
+        A general ATS read, scored as-is — a human or a different ATS may score it differently; we cap
+        general scores at 95.
+      </p>
       <div className="mt-2 flex flex-col gap-2">
         {r.cvUrl ? (
           <a

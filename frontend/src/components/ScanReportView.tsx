@@ -9,6 +9,7 @@
  */
 import { useState } from "react";
 import type { ScanReport, Deduction } from "@/types/scanReport";
+import ScoreDisclaimer from "@/components/ScoreDisclaimer";
 
 const PILLARS = ["Parse-ability", "JD relevance", "Readability & impact"];
 
@@ -106,6 +107,13 @@ export default function ScanReportView({ report }: { report: ScanReport }) {
             </div>
           );
         })}
+
+      {/* Honest footer — shown on every result, both modes (PO C2 / INV-10). */}
+      <ScoreDisclaimer
+        mode={report.mode}
+        ceiling={report.ceiling}
+        atCeiling={report.score >= report.ceiling}
+      />
     </div>
   );
 }
